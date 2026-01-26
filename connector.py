@@ -1,19 +1,31 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+def ask_voiceflow(user_id: str, message: str):
+    url = f"{BASE_URL}/state/{VOICEFLOW_PROJECT_ID}/user/{user_id}/interact"
 
-app = FastAPI()
-
-class UserMessage(BaseModel):
-    message: str
-
-@app.post("/ask")
-def ask(data: UserMessage):
-    return {
-        "response": {
-            "text": f"Привет! Ты написала: {data.message}"
-        }
+    headers = {
+        "Authorization": VOICEFLOW_API_KEY,
+        "Content-Type": "application/json",
     }
 
-@app.get("/healthz")
-def healthz():
-    return {"status": "ok"}
+    payload = {
+        "type": "text",
+        "payload": message
+    }
+
+    r = requests.post(url, headers=headers, json=payload)
+    r.raise_for_status()
+
+    data = r.json()
+
+    # вытаскиваем первый текстовый ответ
+    text_response = ""
+
+    for item in data:
+        if item.get("type") == "text":
+            text_response = item.get("payload", "")
+            break
+
+    return {
+        "response": {
+            "text": text_response
+        }
+    }
