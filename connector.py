@@ -31,9 +31,14 @@ def ask_voiceflow(user_id: str, message: str):
     return response.json()
 
 @app.post("/ask")
-def ask(data: UserMessage):
-    result = ask_voiceflow(data.user_id, data.message)
-    return {"response": result}
+def ask(data: dict):
+    return {
+        "response": {
+            "type": "text",
+            "payload": "Привет, я работаю и это новый код 🚀"
+        }
+    }
+
 
 @app.get("/healthz")
 def healthz():
