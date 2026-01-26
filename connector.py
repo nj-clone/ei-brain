@@ -1,14 +1,32 @@
-def ask_voiceflow(user_id: str, message: str):
-    url = f"{BASE_URL}/state/{VOICEFLOW_PROJECT_ID}/user/{user_id}/interact"
+import os
+import requests
+from fastapi import FastAPI
+from pydantic import BaseModel
+from dotenv import load_dotenv
 
+load_dotenv()
+
+VOICEFLOW_API_KEY = os.getenv("VOICEFLOW_API_KEY")
+VOICEFLOW_VERSION_ID = os.getenv("VOICEFLOW_VERSION_ID")
+BASE_URL = "https://general-runtime.voiceflow.com"
+
+app = FastAPI()
+
+
+class UserMessage(BaseModel):
+    user_id: str
+    message: str
+
+
+def ask_voiceflow(user_id: str, message: str) -> str:
+    url = f"{BASE_URL}/state/{VOICEFLOW_VERSION_ID}/user/{user_id}/interact"
     headers = {
         "Authorization": VOICEFLOW_API_KEY,
         "Content-Type": "application/json",
     }
-
     payload = {
         "type": "text",
-        "payload": message
+        "payload": message,
     }
 
     r = requests.post(url, headers=headers, json=payload)
@@ -16,16 +34,18 @@ def ask_voiceflow(user_id: str, message: str):
 
     data = r.json()
 
-    # вытаскиваем первый текстовый ответ
-    text_response = ""
-
     for item in data:
         if item.get("type") == "text":
-            text_response = item.get("payload", "")
-            break
+            return item.get("payload", "")
 
+    return ""
+
+
+@app.post("/ask")
+def ask(data: UserMessage):
+    answer = ask_voiceflow(data.user_id, data.message)
     return {
         "response": {
-            "text": text_response
+            "text": answer
         }
     }
