@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 VOICEFLOW_API_KEY = os.getenv("VOICEFLOW_API_KEY")
-VOICEFLOW_VERSION_ID = os.getenv("VOICEFLOW_VERSION_ID")
+VOICEFLOW_PROJECT_ID = os.getenv("VOICEFLOW_PROJECT_ID")
 BASE_URL = "https://general-runtime.voiceflow.com"
 
 app = FastAPI()
@@ -18,7 +18,7 @@ class UserMessage(BaseModel):
 
 
 def ask_voiceflow(user_id: str, message: str) -> str:
-    url = f"{BASE_URL}/state/{VOICEFLOW_VERSION_ID}/user/{user_id}/interact"
+    url = f"{BASE_URL}/state/{VOICEFLOW_PROJECT_ID}/user/{user_id}/interact"
 
     headers = {
         "Authorization": f"Bearer {VOICEFLOW_API_KEY}",
