@@ -27,9 +27,7 @@ def ask_voiceflow(data: UserMessage):
     payload = {
     "request": {
         "type": "text",
-        "payload": {
-            "text": data.message
-        }
+        "payload": data.message
     },
     "config": {
         "tts": False,
