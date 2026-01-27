@@ -1,41 +1,38 @@
 import os
 import requests
-from fastapi import FastAPI, Body
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+VOICEFLOW_API_KEY = os.getenv("VOICEFLOW_API_KEY")
+VOICEFLOW_PROJECT_ID = os.getenv("VOICEFLOW_PROJECT_ID")
 
 app = FastAPI()
 
-VOICEFLOW_API_KEY = os.getenv("VOICEFLOW_API_KEY")
-VOICEFLOW_PROJECT_ID = os.getenv("VOICEFLOW_PROJECT_ID")  # именно project_id
+class UserMessage(BaseModel):
+    message: str
 
 @app.post("/ask")
-def ask(message: str = Body(..., embed=True)):
-    url = "https://general-runtime.voiceflow.com/interact"
+def ask(data: UserMessage):
+    url = f"https://general-runtime.voiceflow.com/state/{VOICEFLOW_PROJECT_ID}/user/flutter_user/interact"
+
+    headers = {
+        "Authorization": VOICEFLOW_API_KEY,
+        "Content-Type": "application/json"
+    }
 
     payload = {
         "request": {
             "type": "text",
             "payload": {
-                "text": message
+                "text": data.message
             }
         }
     }
 
-    headers = {
-        "Authorization": f"Bearer {VOICEFLOW_API_KEY}",
-        "Content-Type": "application/json"
-    }
+    r = requests.post(url, headers=headers, json=payload)
+    r.raise_for_status()
 
-    params = {
-        "projectID": VOICEFLOW_PROJECT_ID,
-        "userID": "flutterflow-user"
-    }
+    traces = r.json()
 
-    response = requests.post(
-        url,
-        json=payload,
-        headers=headers,
-        params=params,
-        timeout=30
-    )
-
-    return response.json()
+    # временно — возвращаем СЫРОЙ ответ Voiceflow
+    return traces
