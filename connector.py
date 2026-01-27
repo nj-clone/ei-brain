@@ -25,9 +25,14 @@ def ask_voiceflow(user_id: str, message: str) -> str:
         "Content-Type": "application/json",
     }
     payload = {
+    "request": {
         "type": "text",
-        "payload": message,
+        "payload": {
+            "text": user_message
+        }
     }
+}
+
 
     r = requests.post(url, headers=headers, json=payload)
     r.raise_for_status()
