@@ -12,7 +12,6 @@ BASE_URL = "https://general-runtime.voiceflow.com"
 
 app = FastAPI()
 
-
 class UserMessage(BaseModel):
     user_id: str
     message: str
@@ -22,11 +21,11 @@ def ask_voiceflow(user_id: str, message: str) -> str:
     url = f"{BASE_URL}/state/{VOICEFLOW_VERSION_ID}/user/{user_id}/interact"
 
     headers = {
-        "Authorization": VOICEFLOW_API_KEY,
+        "Authorization": f"Bearer {VOICEFLOW_API_KEY}",
         "Content-Type": "application/json",
+        "Accept": "application/json"
     }
 
-    # 🔴 ВАЖНО: Voiceflow принимает ТОЛЬКО text
     payload = {
         "request": {
             "type": "text",
@@ -41,10 +40,9 @@ def ask_voiceflow(user_id: str, message: str) -> str:
 
     data = r.json()
 
-    # Voiceflow ВСЕГДА возвращает массив трасс
-    for item in data:
-        if item.get("type") == "text":
-            text = item.get("payload", {}).get("text")
+    for trace in data:
+        if trace.get("type") == "text":
+            text = trace.get("payload", {}).get("text")
             if isinstance(text, str) and text.strip():
                 return text
 
