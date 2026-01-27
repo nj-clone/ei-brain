@@ -20,16 +20,18 @@ class UserMessage(BaseModel):
 
 def ask_voiceflow(user_id: str, message: str) -> str:
     url = f"{BASE_URL}/state/{VOICEFLOW_VERSION_ID}/user/{user_id}/interact"
+
     headers = {
         "Authorization": VOICEFLOW_API_KEY,
         "Content-Type": "application/json",
     }
 
+    # ✅ ЕДИНСТВЕННО правильный payload для Voiceflow Runtime
     payload = {
         "request": {
             "type": "text",
             "payload": {
-                "message": message
+                "text": message
             }
         }
     }
@@ -39,16 +41,17 @@ def ask_voiceflow(user_id: str, message: str) -> str:
 
     data = r.json()
 
-    # Voiceflow returns an ARRAY of traces
-    for item in data:
-        if item.get("type") == "text":
-            payload = item.get("payload", {})
-            if isinstance(payload, dict):
-                text = payload.get("message")
-                if isinstance(text, str) and text.strip():
-                    return text
+    # ✅ Voiceflow ВСЕГДА возвращает массив трасс
+    # Мы берём ПЕРВЫЙ осмысленный текст
+    for trace in data:
+        if trace.get("type") == "text":
+            payload = trace.get("payload", {})
+            text = payload.get("text")
+            if isinstance(text, str) and text.strip():
+                return text
 
     return ""
+
 
 @app.post("/ask")
 def ask(data: UserMessage):
