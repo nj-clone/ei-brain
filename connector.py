@@ -25,15 +25,20 @@ def ask_voiceflow(data: UserMessage):
     }
 
     payload = {
-        "request": {
-            "type": "text",
-            "payload": data.message
-        },
-        "config": {
-            "tts": False,
-            "stripSSML": True
+    "request": {
+        "type": "text",
+        "payload": {
+            "text": data.message
         }
+    },
+    "state": {
+        "language": "auto"
+    },
+    "config": {
+        "tts": False,
+        "stripSSML": True
     }
+}
 
     response = requests.post(
         url,
