@@ -39,11 +39,23 @@ def ask_voiceflow(user_id: str, message: str) -> str:
 
     data = r.json()
 
-    for item in data:
-        if item.get("type") == "text":
-            return item.get("payload", "")
-
+def extract_text(obj):
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k in ("text", "message") and isinstance(v, str):
+                return v
+            result = extract_text(v)
+            if result:
+                return result
+    elif isinstance(obj, list):
+        for item in obj:
+            result = extract_text(item)
+            if result:
+                return result
     return ""
+
+answer = extract_text(data)
+return answer
 
 
 @app.post("/ask")
