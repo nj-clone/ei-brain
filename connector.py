@@ -26,7 +26,7 @@ def ask_voiceflow(user_id: str, message: str) -> str:
         "Content-Type": "application/json",
     }
 
-    # ✅ ЕДИНСТВЕННО правильный payload для Voiceflow Runtime
+    # 🔴 ВАЖНО: Voiceflow принимает ТОЛЬКО text
     payload = {
         "request": {
             "type": "text",
@@ -41,12 +41,10 @@ def ask_voiceflow(user_id: str, message: str) -> str:
 
     data = r.json()
 
-    # ✅ Voiceflow ВСЕГДА возвращает массив трасс
-    # Мы берём ПЕРВЫЙ осмысленный текст
-    for trace in data:
-        if trace.get("type") == "text":
-            payload = trace.get("payload", {})
-            text = payload.get("text")
+    # Voiceflow ВСЕГДА возвращает массив трасс
+    for item in data:
+        if item.get("type") == "text":
+            text = item.get("payload", {}).get("text")
             if isinstance(text, str) and text.strip():
                 return text
 
