@@ -1,30 +1,15 @@
 import os
 import requests
-from fastapi import FastAPI
-from pydantic import BaseModel
-from dotenv import load_dotenv
-
-load_dotenv()
-
-VOICEFLOW_API_KEY = os.getenv("VOICEFLOW_API_KEY")
-VOICEFLOW_PROJECT_ID = os.getenv("VOICEFLOW_PROJECT_ID")
-BASE_URL = "https://general-runtime.voiceflow.com"
+from fastapi import FastAPI, Body
 
 app = FastAPI()
 
-class UserMessage(BaseModel):
-    user_id: str
-    message: str
+VOICEFLOW_API_KEY = os.getenv("VOICEFLOW_API_KEY")
+VOICEFLOW_PROJECT_ID = os.getenv("VOICEFLOW_PROJECT_ID")  # именно project_id
 
-
-def ask_voiceflow(user_id: str, message: str) -> str:
-    url = f"{BASE_URL}/state/{VOICEFLOW_PROJECT_ID}/user/{user_id}/interact"
-
-    headers = {
-        "Authorization": f"Bearer {VOICEFLOW_API_KEY}",
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-    }
+@app.post("/ask")
+def ask(message: str = Body(..., embed=True)):
+    url = "https://general-runtime.voiceflow.com/interact"
 
     payload = {
         "request": {
@@ -35,25 +20,22 @@ def ask_voiceflow(user_id: str, message: str) -> str:
         }
     }
 
-    r = requests.post(url, headers=headers, json=payload)
-    r.raise_for_status()
-
-    data = r.json()
-
-    for trace in data:
-        if trace.get("type") == "text":
-            text = trace.get("payload", {}).get("text")
-            if isinstance(text, str) and text.strip():
-                return text
-
-    return ""
-
-
-@app.post("/ask")
-def ask(data: UserMessage):
-    answer = ask_voiceflow(data.user_id, data.message)
-    return {
-        "response": {
-            "text": answer
-        }
+    headers = {
+        "Authorization": f"Bearer {VOICEFLOW_API_KEY}",
+        "Content-Type": "application/json"
     }
+
+    params = {
+        "projectID": VOICEFLOW_PROJECT_ID,
+        "userID": "flutterflow-user"
+    }
+
+    response = requests.post(
+        url,
+        json=payload,
+        headers=headers,
+        params=params,
+        timeout=30
+    )
+
+    return response.json()
