@@ -28,7 +28,7 @@ def ask_voiceflow(user_id: str, message: str) -> str:
     "request": {
         "type": "text",
         "payload": {
-            "text": user_message
+            "text": message
         }
     }
 }
