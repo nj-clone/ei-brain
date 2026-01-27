@@ -1,19 +1,23 @@
-import os
-import requests
 from fastapi import FastAPI
 from pydantic import BaseModel
+import requests
+import os
+import uuid
+
+app = FastAPI()
 
 VOICEFLOW_API_KEY = os.getenv("VOICEFLOW_API_KEY")
 VOICEFLOW_PROJECT_ID = os.getenv("VOICEFLOW_PROJECT_ID")
 
-app = FastAPI()
-
 class UserMessage(BaseModel):
     message: str
+    user_id: str | None = None
 
 @app.post("/ask")
-def ask(data: UserMessage):
-    url = f"https://general-runtime.voiceflow.com/state/{VOICEFLOW_PROJECT_ID}/user/flutter_user/interact"
+def ask_voiceflow(data: UserMessage):
+    user_id = data.user_id or str(uuid.uuid4())
+
+    url = f"https://general-runtime.voiceflow.com/state/user/{user_id}/interact"
 
     headers = {
         "Authorization": VOICEFLOW_API_KEY,
@@ -23,16 +27,31 @@ def ask(data: UserMessage):
     payload = {
         "request": {
             "type": "text",
-            "payload": {
-                "text": data.message
-            }
+            "payload": data.message
+        },
+        "config": {
+            "tts": False,
+            "stripSSML": True
         }
     }
 
-    r = requests.post(url, headers=headers, json=payload)
-    r.raise_for_status()
+    response = requests.post(
+        url,
+        headers=headers,
+        json=payload,
+        params={"projectID": VOICEFLOW_PROJECT_ID}
+    )
 
-    traces = r.json()
+    if response.status_code != 200:
+        return {"error": response.text}
 
-    # временно — возвращаем СЫРОЙ ответ Voiceflow
-    return traces
+    traces = response.json()
+
+    texts = []
+    for trace in traces:
+        if trace.get("type") == "text":
+            texts.append(trace["payload"]["message"])
+
+    return {
+        "text": "\n".join(texts)
+    }
