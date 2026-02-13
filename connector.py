@@ -69,3 +69,33 @@ app.add_middleware(
 @app.options("/ask")
 async def options_ask():
     return {}
+
+
+from fastapi import Request
+import stripe
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
+@app.post("/stripe-webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload,
+            sig_header,
+            os.getenv("STRIPE_WEBHOOK_SECRET")
+        )
+    except Exception as e:
+        return {"error": str(e)}
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        customer_email = session.get("customer_email")
+
+        # ТУТ ПОТОМ БУДЕМ ОБНОВЛЯТЬ FIREBASE
+
+        print("Payment successful for:", customer_email)
+
+    return {"status": "success"}
