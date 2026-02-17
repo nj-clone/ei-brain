@@ -99,3 +99,28 @@ async def stripe_webhook(request: Request):
         print("Payment successful for:", customer_email)
 
     return {"status": "success"}
+
+@app.post("/create-checkout-session")
+async def create_checkout_session(request: Request):
+    data = await request.json()
+    customer_email = data.get("email")
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        mode="payment",
+        customer_email=customer_email,
+        line_items=[{
+            "price_data": {
+                "currency": "usd",
+                "product_data": {
+                    "name": "Zodiac Wisdom",
+                },
+                "unit_amount": 999,
+            },
+            "quantity": 1,
+        }],
+        success_url="https://sitconot.tk/success",
+        cancel_url="https://sitconot.tk/cancel",
+    )
+
+    return {"url": session.url}
