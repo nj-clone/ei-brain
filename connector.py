@@ -101,16 +101,15 @@ async def stripe_webhook(request: Request):
         print("Payment successful for:", customer_email)
 
     return {"status": "success"}
-
-@app.post("/create-checkout-session")
+@app.get("/create-checkout-session")
 async def create_checkout_session(request: Request):
-    data = await request.json()
-    customer_email = data.get("email")
+
+    email = request.query_params.get("email")
 
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         mode="payment",
-        customer_email=customer_email,
+        customer_email=email,
         line_items=[{
             "price_data": {
                 "currency": "usd",
@@ -125,5 +124,4 @@ async def create_checkout_session(request: Request):
         cancel_url="https://seyidkona.flutterflow.app/payment",
     )
 
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(session.url)
