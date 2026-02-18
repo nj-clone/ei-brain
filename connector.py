@@ -130,7 +130,6 @@ async def create_checkout_session(request: Request):
 )
 
     return RedirectResponse(session.url)
-)
 
 # ================= FIREBASE + STRIPE TIME LOGIC =================
 
