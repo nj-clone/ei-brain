@@ -109,25 +109,25 @@ async def create_checkout_session(request: Request):
     uid = request.query_params.get("uid")
 
     session = stripe.checkout.Session.create(
-        payment_method_types=["card"],
-        mode="payment",
-        customer_email=email,
-        metadata={
-            "uid": uid
-        },
-        line_items=[{
-            "price_data": {
-                "currency": "usd",
-                "product_data": {
-                    "name": "Zodiac Wisdom",
-                },
-                "unit_amount": 999,
+    payment_method_types=["card"],
+    mode="payment",
+    customer_email=email,
+    metadata={
+        "uid": uid
+    },
+    line_items=[{
+        "price_data": {
+            "currency": "usd",
+            "product_data": {
+                "name": "Zodiac Wisdom",
             },
-            "quantity": 1,
-        }],
-        success_url="https://seyidkona.flutterflow.app/njCORE",
-        cancel_url="https://seyidkona.flutterflow.app/payment",
-    )
+            "unit_amount": 999,
+        },
+        "quantity": 1,
+    }],
+    success_url="https://seyidkona.flutterflow.app/njCORE",
+    cancel_url="https://seyidkona.flutterflow.app/payment",
+)
 
     return RedirectResponse(session.url)
 )
