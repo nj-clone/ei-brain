@@ -177,4 +177,4 @@ user_ref.update({
 
 print("10 minutes granted to UID:", uid)
 
-    return {"status": "success"}
+return {"status": "success"}
