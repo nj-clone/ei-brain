@@ -101,20 +101,20 @@ async def stripe_webhook(request: Request):
         print("Payment successful for:", customer_email)
 
     return {"status": "success"}
+
 @app.get("/create-checkout-session")
 async def create_checkout_session(request: Request):
 
     email = request.query_params.get("email")
-uid = request.query_params.get("uid")
+    uid = request.query_params.get("uid")
 
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         mode="payment",
         customer_email=email,
         metadata={
-    "uid": uid
-},
-
+            "uid": uid
+        },
         line_items=[{
             "price_data": {
                 "currency": "usd",
@@ -125,12 +125,12 @@ uid = request.query_params.get("uid")
             },
             "quantity": 1,
         }],
-        
         success_url="https://seyidkona.flutterflow.app/njCORE",
         cancel_url="https://seyidkona.flutterflow.app/payment",
     )
 
     return RedirectResponse(session.url)
+)
 
 # ================= FIREBASE + STRIPE TIME LOGIC =================
 
@@ -164,20 +164,18 @@ async def stripe_webhook(request: Request):
         return {"error": str(e)}
 
     if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        customer_email = session.get("customer_email")
+     session = event["data"]["object"]
 
-        users_ref = db.collection("users").where("email", "==", customer_email).limit(1)
-        docs = users_ref.stream()
+uid = session["metadata"]["uid"]
 
-        for doc in docs:
-            user_ref = db.collection("users").document(doc.id)
-            user_ref.update({
-                "minutesRemaining": 10,
-                "hasAccess": TRUE,
-                "expiresAt": datetime.utcnow() + timedelta(minutes=10)
-            })
+user_ref = db.collection("users").document(uid)
 
-        print("10 minutes granted to:", customer_email)
+user_ref.update({
+    "minutesRemaining": 10,
+    "hasAccess": True,
+    "expiresAt": datetime.utcnow() + timedelta(minutes=10)
+})
+
+print("10 minutes granted to UID:", uid)
 
     return {"status": "success"}
