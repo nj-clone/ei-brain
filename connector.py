@@ -167,8 +167,9 @@ async def stripe_webhook(request: Request):
         for doc in docs:
             user_ref = db.collection("users").document(doc.id)
             user_ref.update({
-                "minutes_balance": 10,
-                "expires_at": datetime.utcnow() + timedelta(hours=1)
+                "minutesRemaining": 10,
+                "hasAccess": TRUE,
+                "expiresAt": datetime.utcnow() + timedelta(minutes=10)
             })
 
         print("10 minutes granted to:", customer_email)
