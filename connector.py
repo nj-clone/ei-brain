@@ -98,8 +98,8 @@ async def create_checkout_session(request: Request):
                 },
                 "quantity": 1,
             }],
-            success_url="https://https://seyidkona.flutterflow.app/njCORE",
-            cancel_url="https://https://seyidkona.flutterflow.app/payment",
+            success_url="https://seyidkona.flutterflow.app/njCORE",
+            cancel_url="https://seyidkona.flutterflow.app/payment",
         )
 
         return {"url": session.url}
