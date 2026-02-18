@@ -78,35 +78,6 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 from fastapi.responses import JSONResponse
 
-@app.post("/create-checkout-session")
-async def create_checkout_session(request: Request):
-    data = await request.json()
-    user_email = data.get("email")
-
-    try:
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            mode="payment",
-            customer_email=user_email,
-            line_items=[{
-                "price_data": {
-                    "currency": "usd",
-                    "product_data": {
-                        "name": "Subscription Intro"
-                    },
-                    "unit_amount": 1000,  # $10.00
-                },
-                "quantity": 1,
-            }],
-            success_url="https://seyidkona.flutterflow.app/njCORE",
-            cancel_url="https://seyidkona.flutterflow.app/payment",
-        )
-
-        return {"url": session.url}
-
-    except Exception as e:
-        return JSONResponse(status_code=400, content={"error": str(e)})
-
 @app.post("/stripe-webhook")
 async def stripe_webhook(request: Request):
     payload = await request.body()
@@ -154,4 +125,5 @@ async def create_checkout_session(request: Request):
         cancel_url="https://seyidkona.flutterflow.app/payment",
     )
 
-    return {"url": session.url}
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(session.url)
