@@ -125,3 +125,52 @@ async def create_checkout_session(request: Request):
     )
 
     return RedirectResponse(session.url)
+
+# ================= FIREBASE + STRIPE TIME LOGIC =================
+
+import stripe
+import firebase_admin
+from firebase_admin import credentials, firestore
+from datetime import datetime, timedelta
+from fastapi import Request
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
+# Инициализация Firebase
+if not firebase_admin._apps:
+    cred = credentials.Certificate("firebase-key.json")
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
+@app.post("/stripe-webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload,
+            sig_header,
+            os.getenv("STRIPE_WEBHOOK_SECRET")
+        )
+    except Exception as e:
+        return {"error": str(e)}
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        customer_email = session.get("customer_email")
+
+        users_ref = db.collection("users").where("email", "==", customer_email).limit(1)
+        docs = users_ref.stream()
+
+        for doc in docs:
+            user_ref = db.collection("users").document(doc.id)
+            user_ref.update({
+                "minutes_balance": 10,
+                "expires_at": datetime.utcnow() + timedelta(hours=1)
+            })
+
+        print("10 minutes granted to:", customer_email)
+
+    return {"status": "success"}
