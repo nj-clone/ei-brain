@@ -105,11 +105,16 @@ async def stripe_webhook(request: Request):
 async def create_checkout_session(request: Request):
 
     email = request.query_params.get("email")
+uid = request.query_params.get("uid")
 
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         mode="payment",
         customer_email=email,
+        metadata={
+    "uid": uid
+},
+
         line_items=[{
             "price_data": {
                 "currency": "usd",
@@ -120,6 +125,7 @@ async def create_checkout_session(request: Request):
             },
             "quantity": 1,
         }],
+        
         success_url="https://seyidkona.flutterflow.app/njCORE",
         cancel_url="https://seyidkona.flutterflow.app/payment",
     )
