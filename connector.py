@@ -93,21 +93,21 @@ async def stripe_webhook(request: Request):
         return {"error": str(e)}
 
     if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
+    session = event["data"]["object"]
+    uid = session["metadata"]["uid"]
 
-        uid = session["metadata"]["uid"]
+    user_ref = db.collection("users").document(uid)
 
-        user_ref = db.collection("users").document(uid)
+    user_ref.update({
+        "minutesRemaining": 10,
+        "hasAccess": True,
+        "expiresAt": datetime.utcnow() + timedelta(minutes=10)
+    })
 
-        user_ref.update({
-            "minutesRemaining": 10,
-            "hasAccess": True,
-            "expiresAt": datetime.utcnow() + timedelta(minutes=10)
-        })
+    print("10 minutes granted to UID:", uid)
 
-        print("10 minutes granted to UID:", uid)
+return {"status": "success"}
 
-    return {"status": "success"}
 
 @app.get("/create-checkout-session")
 async def create_checkout_session(request: Request):
