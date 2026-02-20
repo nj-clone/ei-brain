@@ -125,6 +125,7 @@ async def create_checkout_session(request: Request):
 
 import stripe
 import firebase_admin
+import os
 from firebase_admin import credentials, firestore
 from datetime import datetime, timedelta
 from fastapi import Request
@@ -133,7 +134,7 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 # Инициализация Firebase
 if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase-key.json")
+cred = credentials.Certificate(os.getenv("FIREBASE_KEY_PATH"))
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
