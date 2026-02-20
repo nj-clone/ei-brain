@@ -134,7 +134,7 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 # Инициализация Firebase
 if not firebase_admin._apps:
-cred = credentials.Certificate(os.getenv("FIREBASE_KEY_PATH"))
+    cred = credentials.Certificate(os.getenv("FIREBASE_KEY_PATH"))
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
