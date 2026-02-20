@@ -92,6 +92,7 @@ async def stripe_webhook(request: Request):
         print("EVENT TYPE:", event["type"])
         print("METADATA:", event["data"]["object"].get("metadata", {}))
     except Exception as e:
+        print("WEBHOOK ERROR:", str(e))
         return {"error": str(e)}
 
 @app.get("/create-checkout-session")
