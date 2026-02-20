@@ -103,7 +103,7 @@ async def create_checkout_session(request: Request):
     mode="payment",
     customer_email=email,
     metadata={
-        "uid": uid
+        "userId": uid
     },
     line_items=[{
         "price_data": {
