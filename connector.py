@@ -89,6 +89,8 @@ async def stripe_webhook(request: Request):
             sig_header,
             os.getenv("STRIPE_WEBHOOK_SECRET")
         )
+        print("EVENT TYPE:", event["type"])
+        print("METADATA:", event["data"]["object"].get("metadata", {}))
     except Exception as e:
         return {"error": str(e)}
 
