@@ -123,9 +123,9 @@ async def create_checkout_session(request: Request):
 
 # ================= FIREBASE + STRIPE TIME LOGIC =================
 
+import os
 import stripe
 import firebase_admin
-import os
 from firebase_admin import credentials, firestore
 from datetime import datetime, timedelta
 from fastapi import Request
