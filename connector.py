@@ -78,23 +78,6 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 from fastapi.responses import JSONResponse
 
-@app.post("/stripe-webhook")
-async def stripe_webhook(request: Request):
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload,
-            sig_header,
-            os.getenv("STRIPE_WEBHOOK_SECRET")
-        )
-        print("EVENT TYPE:", event["type"])
-        print("METADATA:", event["data"]["object"].get("metadata", {}))
-    except Exception as e:
-        print("WEBHOOK ERROR:", str(e))
-        return {"error": str(e)}
-
 @app.get("/create-checkout-session")
 async def create_checkout_session(request: Request):
 
@@ -163,7 +146,7 @@ async def stripe_webhook(request: Request):
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
 
-        uid = session["metadata"]["uid"]
+        uid = session["metadata"]["user_id"]
 
         user_ref = db.collection("users").document(uid)
 
