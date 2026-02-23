@@ -143,20 +143,26 @@ async def stripe_webhook(request: Request):
         return {"error": str(e)}
 
     # ВАЖНО: ВСЁ НИЖЕ ВНУТРИ ФУНКЦИИ
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
+if event["type"] == "checkout.session.completed":
+    session = event["data"]["object"]
 
-        uid = session["metadata"]["user_id"]
+    metadata = session.get("metadata", {})
+    uid = metadata.get("user_id")
 
-        user_ref = db.collection("users").document(uid)
+    if not uid:
+        print("No user_id in metadata")
+        return {"status": "no user id"}
 
-        user_ref.update({
-            "minutesRemaining": 10,
-            "hasAccess": True,
-            "expiresAt": datetime.utcnow() + timedelta(minutes=10)
-        })
+    user_ref = db.collection("users").document(uid)
 
-        print("10 minutes granted to UID:", uid)
+    user_ref.update({
+        "minutesRemaining": 10,
+        "hasAccess": True,
+        "expiresAt": datetime.utcnow() + timedelta(minutes=10)
+    })
 
+    print(f"10 minutes granted to UID: {uid}")
     return {"status": "success"}
 
+return {"status": "ignored"}
+    
