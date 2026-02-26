@@ -166,12 +166,17 @@ async def stripe_webhook(request: Request):
 
     return {"status": "ignored"}
     
-import requests
+import os
 import uuid
-from fastapi import HTTPException
+import requests
+from datetime import datetime, timedelta
+from fastapi import FastAPI, HTTPException
 
-@app.post("/create-forta-order")
-async def create_forta_order(data: dict):
+app = FastAPI()
+
+
+@app.post("/create-forte-order")
+async def create_forte_order(data: dict):
 
     uid = data.get("uid")
     plan = data.get("plan")
@@ -179,39 +184,54 @@ async def create_forta_order(data: dict):
     if not uid or not plan:
         raise HTTPException(status_code=400, detail="Missing uid or plan")
 
-    # Определяем сумму
     if plan == "hour":
-        amount = 9990
+        amount = "9990.00"
+        expires_at = datetime.utcnow() + timedelta(hours=1)
+
+    elif plan == "day":
+        amount = "29990.00"
+        expires_at = datetime.utcnow() + timedelta(days=1)
+
     elif plan == "month":
-        amount = 59990
+        amount = "79990.00"
+        expires_at = datetime.utcnow() + timedelta(days=30)
+
     else:
         raise HTTPException(status_code=400, detail="Invalid plan")
-
-    order_id = str(uuid.uuid4())
 
     forte_url = os.getenv("FORTE_API_URL")
     username = os.getenv("FORTE_USERNAME")
     password = os.getenv("FORTE_PASSWORD")
-    merchant_id = os.getenv("FORTE_MERCHANT_ID")
 
     payload = {
-        "merchantId": merchant_id,
-        "amount": amount,
-        "orderId": order_id,
-        "description": f"Subscription {plan}",
-        "language": "ru"
+        "order": {
+            "typeRid": "Order_RID",
+            "language": "en",
+            "amount": amount,
+            "currency": "KZT",
+            "hppRedirectUrl": "https://nj-web.flutterflow.app//paywall",
+            "description": f"Subscription {plan}",
+            "title": "Subscription"
+        }
     }
 
     try:
         response = requests.post(
-            forte_url,
+            f"{forte_url}/order",
             json=payload,
-            auth=(username, password)
+            auth=(username, password),
+            headers={"Content-Type": "application/json"}
         )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-        forte_response = response.json()
+    forte_response = response.json()
 
-        return forte_response
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "orderId": forte_response["order"]["id"],
+        "hppUrl": forte_response["order"]["hppUrl"],
+        "password": forte_response["order"]["password"],
+        "plan": plan,
+        "expiresAt": expires_at.isoformat()
+    }
