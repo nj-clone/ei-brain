@@ -140,7 +140,7 @@ async def stripe_webhook(request: Request):
             os.getenv("STRIPE_WEBHOOK_SECRET")
         )
     except Exception as e:
-        return {"error": str(e)}
+    return {"error": str(e)}
 
     # ВАЖНО: ВСЁ НИЖЕ ВНУТРИ ФУНКЦИИ
 if event["type"] == "checkout.session.completed":
@@ -151,7 +151,7 @@ if event["type"] == "checkout.session.completed":
 
     if not uid:
         print("No user_id in metadata")
-        return {"status": "no user id"}
+    return {"status": "no user id"}
 
     user_ref = db.collection("users").document(uid)
 
