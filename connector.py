@@ -143,7 +143,7 @@ async def stripe_webhook(request: Request):
         return {"error": str(e)}
 
     # ВАЖНО: ВСЁ НИЖЕ ВНУТРИ ФУНКЦИИ
-if event["type"] == "checkout.session.completed":
+    if event["type"] == "checkout.session.completed":
     session = event["data"]["object"]
 
     metadata = session.get("metadata", {})
