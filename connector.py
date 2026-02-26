@@ -144,7 +144,7 @@ async def stripe_webhook(request: Request):
 
     # ВАЖНО: ВСЁ НИЖЕ ВНУТРИ ФУНКЦИИ
     if event["type"] == "checkout.session.completed":
-    session = event["data"]["object"]
+        session = event["data"]["object"]
 
     metadata = session.get("metadata", {})
     uid = metadata.get("user_id")
