@@ -184,6 +184,8 @@ async def create_forte_order(data: dict):
     if not uid or not plan:
         raise HTTPException(status_code=400, detail="Missing uid or plan")
 
+    plan = plan.strip().lower()
+    
     if plan == "hour":
         amount = "9990.00"
         expires_at = datetime.utcnow() + timedelta(hours=1)
