@@ -166,3 +166,52 @@ async def stripe_webhook(request: Request):
 
     return {"status": "ignored"}
     
+import requests
+import uuid
+from fastapi import HTTPException
+
+@app.post("/create-forta-order")
+async def create_forta_order(data: dict):
+
+    uid = data.get("uid")
+    plan = data.get("plan")
+
+    if not uid or not plan:
+        raise HTTPException(status_code=400, detail="Missing uid or plan")
+
+    # Определяем сумму
+    if plan == "hour":
+        amount = 9990
+    elif plan == "month":
+        amount = 59990
+    else:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+
+    order_id = str(uuid.uuid4())
+
+    forte_url = os.getenv("FORTE_API_URL")
+    username = os.getenv("FORTE_USERNAME")
+    password = os.getenv("FORTE_PASSWORD")
+    merchant_id = os.getenv("FORTE_MERCHANT_ID")
+
+    payload = {
+        "merchantId": merchant_id,
+        "amount": amount,
+        "orderId": order_id,
+        "description": f"Subscription {plan}",
+        "language": "ru"
+    }
+
+    try:
+        response = requests.post(
+            forte_url,
+            json=payload,
+            auth=(username, password)
+        )
+
+        forte_response = response.json()
+
+        return forte_response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
