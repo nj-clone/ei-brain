@@ -164,5 +164,5 @@ if event["type"] == "checkout.session.completed":
     print(f"10 minutes granted to UID: {uid}")
     return {"status": "success"}
 
-return {"status": "ignored"}
+    return {"status": "ignored"}
     
