@@ -140,7 +140,7 @@ async def stripe_webhook(request: Request):
             os.getenv("STRIPE_WEBHOOK_SECRET")
         )
     except Exception as e:
-    return {"error": str(e)}
+        return {"error": str(e)}
 
     # ВАЖНО: ВСЁ НИЖЕ ВНУТРИ ФУНКЦИИ
 if event["type"] == "checkout.session.completed":
