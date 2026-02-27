@@ -189,7 +189,7 @@ async def create_forte_order(data: dict):
         expires_at = datetime.utcnow() + timedelta(days=1)
 
     elif plan == "month":
-        amount = "59990.00"
+        amount = "89990.00"
         expires_at = datetime.utcnow() + timedelta(days=30)
 
     else:
