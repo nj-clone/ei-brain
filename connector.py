@@ -171,7 +171,8 @@ async def stripe_webhook(request: Request):
 
 @app.post("/create-forte-order")
 async def create_forte_order(data: dict):
-
+    print("RAW DATA", data)
+    
     uid = data.get("uid")
     plan = data.get("plan")
 
