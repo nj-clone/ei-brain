@@ -227,10 +227,12 @@ async def create_forte_order(data: dict):
 
     forte_response = response.json()
 
-    return {
-        "orderId": forte_response["order"]["id"],
-        "hppUrl": forte_response["order"]["hppUrl"],
-        "password": forte_response["order"]["password"],
-        "plan": plan,
-        "expiresAt": expires_at.isoformat()
-    }
+order_id = forte_response["order"]["id"]
+password = forte_response["order"]["password"]
+hpp_url = forte_response["order"]["hppUrl"]
+
+pay_url = f"{hpp_url}?id={order_id}&password={password}"
+
+print("REDIRECTING TO:", pay_url)
+
+return RedirectResponse(pay_url)
