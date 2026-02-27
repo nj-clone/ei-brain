@@ -233,6 +233,9 @@ async def create_forte_order(data: dict):
 
     pay_url = f"{hpp_url}?id={order_id}&password={password}"
 
-    print("REDIRECTING TO:", pay_url)
+    print("PAY URL:", pay_url)
 
-    return RedirectResponse(pay_url)
+    return {
+        "payUrl": pay_url,
+        "orderId": order_id
+    }
