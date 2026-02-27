@@ -238,3 +238,4 @@ async def create_forte_order(data: dict):
     return RedirectResponse(
     url=pay_url
     status_code=302
+    )
