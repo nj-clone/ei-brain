@@ -1,17 +1,60 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import requests
+
 import os
 import uuid
-from fastapi.responses import RedirectResponse
+import json
+import requests
+import stripe
+import firebase_admin
+
+from firebase_admin import credentials, firestore
+from datetime import datetime, timedelta
+
+
 app = FastAPI()
+
+# ================= CORS =================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ================= ENV VARIABLES =================
 
 VOICEFLOW_API_KEY = os.getenv("VOICEFLOW_API_KEY")
 VOICEFLOW_PROJECT_ID = os.getenv("VOICEFLOW_PROJECT_ID")
 
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+FORTE_API_URL = os.getenv("FORTE_API_URL")
+FORTE_USERNAME = os.getenv("FORTE_USERNAME")
+FORTE_PASSWORD = os.getenv("FORTE_PASSWORD")
+
+stripe.api_key = STRIPE_SECRET_KEY
+
+# ================= FIREBASE INIT =================
+
+if not firebase_admin._apps:
+    firebase_json = os.getenv("FIREBASE_KEY_JSON")
+    cred = credentials.Certificate(json.loads(firebase_json))
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
+# ================= VOICEFLOW =================
+
 class UserMessage(BaseModel):
     message: str
     user_id: str | None = None
+
 
 @app.post("/ask")
 def ask_voiceflow(data: UserMessage):
@@ -25,15 +68,15 @@ def ask_voiceflow(data: UserMessage):
     }
 
     payload = {
-    "request": {
-        "type": "text",
-        "payload": data.message
-    },
-    "config": {
-        "tts": False,
-        "stripSSML": True
+        "request": {
+            "type": "text",
+            "payload": data.message
+        },
+        "config": {
+            "tts": False,
+            "stripSSML": True
+        }
     }
-}
 
     response = requests.post(
         url,
@@ -47,36 +90,16 @@ def ask_voiceflow(data: UserMessage):
 
     traces = response.json()
 
-    texts = []
-    for trace in traces:
-        if trace.get("type") == "text":
-            texts.append(trace["payload"]["message"])
+    texts = [
+        trace["payload"]["message"]
+        for trace in traces
+        if trace.get("type") == "text"
+    ]
 
-    return {
-        "text": "\n".join(texts)
-    }
-
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.options("/ask")
-async def options_ask():
-    return {}
+    return {"text": "\n".join(texts)}
 
 
-from fastapi import Request
-import stripe
-
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-
-from fastapi.responses import JSONResponse
+# ================= STRIPE CHECKOUT =================
 
 @app.get("/create-checkout-session")
 async def create_checkout_session(request: Request):
@@ -85,47 +108,26 @@ async def create_checkout_session(request: Request):
     uid = request.query_params.get("uid")
 
     session = stripe.checkout.Session.create(
-    payment_method_types=["card"],
-    mode="payment",
-    customer_email=email,
-    metadata={
-        "user_id": uid
-    },
-    line_items=[{
-        "price_data": {
-            "currency": "usd",
-            "product_data": {
-                "name": "Zodiac Wisdom",
+        payment_method_types=["card"],
+        mode="payment",
+        customer_email=email,
+        metadata={"user_id": uid},
+        line_items=[{
+            "price_data": {
+                "currency": "usd",
+                "product_data": {"name": "Zodiac Wisdom"},
+                "unit_amount": 999,
             },
-            "unit_amount": 999,
-        },
-        "quantity": 1,
-    }],
-    success_url="https://seyidkona.flutterflow.app/njCORE",
-    cancel_url="https://seyidkona.flutterflow.app/payment",
-)
+            "quantity": 1,
+        }],
+        success_url="https://seyidkona.flutterflow.app/njCORE",
+        cancel_url="https://seyidkona.flutterflow.app/payment",
+    )
 
     return RedirectResponse(session.url)
 
-# ================= FIREBASE + STRIPE TIME LOGIC =================
 
-import os
-import stripe
-import firebase_admin
-from firebase_admin import credentials, firestore
-from datetime import datetime, timedelta
-from fastapi import Request
-
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-
-# Инициализация Firebase
-if not firebase_admin._apps:
-    import json
-    firebase_json = os.getenv("FIREBASE_KEY_JSON")
-    cred = credentials.Certificate(json.loads(firebase_json))
-    firebase_admin.initialize_app(cred)
-
-db = firestore.client()
+# ================= STRIPE WEBHOOK =================
 
 @app.post("/stripe-webhook")
 async def stripe_webhook(request: Request):
@@ -137,58 +139,47 @@ async def stripe_webhook(request: Request):
         event = stripe.Webhook.construct_event(
             payload,
             sig_header,
-            os.getenv("STRIPE_WEBHOOK_SECRET")
+            STRIPE_WEBHOOK_SECRET
         )
     except Exception as e:
-        return {"error": str(e)}
+        return JSONResponse({"error": str(e)}, status_code=400)
 
-    # ВАЖНО: ВСЁ НИЖЕ ВНУТРИ ФУНКЦИИ
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
+        metadata = session.get("metadata", {})
+        uid = metadata.get("user_id")
 
-    metadata = session.get("metadata", {})
-    uid = metadata.get("user_id")
+        if not uid:
+            return {"status": "no user id"}
 
-    if not uid:
-        print("No user_id in metadata")
-    return {"status": "no user id"}
+        user_ref = db.collection("users").document(uid)
 
-    user_ref = db.collection("users").document(uid)
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
 
-    user_ref.update({
-        "minutesRemaining": 10,
-        "hasAccess": True,
-        "expiresAt": datetime.utcnow() + timedelta(minutes=10)
-    })
+        user_ref.update({
+            "minutesRemaining": 10,
+            "hasAccess": True,
+            "expiresAt": expires_at
+        })
 
-    print(f"10 minutes granted to UID: {uid}")
-    return {"status": "success"}
+        return {"status": "success"}
 
     return {"status": "ignored"}
-    
-import os
-import uuid
-import requests
-from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException
 
-app = FastAPI()
 
+# ================= FORTE CREATE ORDER =================
 
 @app.post("/create-forte-order")
 async def create_forte_order(data: dict):
 
     uid = data.get("uid")
     plan = data.get("plan")
-    print ("PLAN RECEIVED:", plan)
 
     if not uid or not plan:
         raise HTTPException(status_code=400, detail="Missing uid or plan")
 
     plan = plan.strip().lower()
 
-    print ("PLAN AFTER STRIP:", plan)
-    
     if plan == "hour":
         amount = "9990.00"
         expires_at = datetime.utcnow() + timedelta(hours=1)
@@ -198,15 +189,11 @@ async def create_forte_order(data: dict):
         expires_at = datetime.utcnow() + timedelta(days=1)
 
     elif plan == "month":
-        amount = "79990.00"
+        amount = "59990.00"
         expires_at = datetime.utcnow() + timedelta(days=30)
 
     else:
         raise HTTPException(status_code=400, detail="Invalid plan")
-
-    forte_url = os.getenv("FORTE_API_URL")
-    username = os.getenv("FORTE_USERNAME")
-    password = os.getenv("FORTE_PASSWORD")
 
     payload = {
         "order": {
@@ -214,7 +201,7 @@ async def create_forte_order(data: dict):
             "language": "en",
             "amount": amount,
             "currency": "KZT",
-            "hppRedirectUrl": "https://nj-web.flutterflow.app//paywall",
+            "hppRedirectUrl": "https://nj-web.flutterflow.app/paywall",
             "description": f"Subscription {plan}",
             "title": "Subscription"
         }
@@ -222,9 +209,9 @@ async def create_forte_order(data: dict):
 
     try:
         response = requests.post(
-            f"{forte_url}/order",
+            f"{FORTE_API_URL}/order",
             json=payload,
-            auth=(username, password),
+            auth=(FORTE_USERNAME, FORTE_PASSWORD),
             headers={"Content-Type": "application/json"}
         )
         response.raise_for_status()
