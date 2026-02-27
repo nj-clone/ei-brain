@@ -235,7 +235,6 @@ async def create_forte_order(data: dict):
 
     print("PAY URL:", pay_url)
 
-    return {
-        "payUrl": pay_url,
-        "orderId": order_id
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=pay_url,status_code=302)
     }
