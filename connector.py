@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -235,9 +235,6 @@ async def create_forte_order(data: dict):
 
     print("PAY URL:", pay_url)
 
-    return {
-        "payUrl": pay_url,
-        "orderId": order_id,
-        "plan": plan,
-        "expiresAt": expires_at.isoformat()
-    }
+    return RedirectResponse(
+    url=pay_url
+    status_code=302
