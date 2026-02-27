@@ -218,6 +218,9 @@ async def create_forte_order(data: dict):
             auth=(FORTE_USERNAME, FORTE_PASSWORD),
             headers={"Content-Type": "application/json"}
         )
+        print("FORTE STATUS:", response.status_code)
+        print("FORTE RESPONSE TEXT:", response.text)
+        
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=400, detail=str(e))
