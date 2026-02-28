@@ -60,6 +60,29 @@ class UserMessage(BaseModel):
 def ask_voiceflow(data: UserMessage):
     user_id = data.user_id or str(uuid.uuid4())
 
+    # ===== ПРОВЕРКА ДОСТУПА =====
+    user_ref = db.collection("users").document(user_id)
+    user_doc = user_ref.get()
+
+    if not user_doc.exists:
+        return {"error": "No access"}
+
+    user_data = user_doc.to_dict()
+
+    has_access = user_data.get("hasAccess", False)
+    expires_at = user_data.get("expiresAt")
+
+    if not has_access:
+        return {"error": "Access denied"}
+
+    if expires_at:
+        if datetime.utcnow() > expires_at:
+            user_ref.update({
+                "hasAccess": False
+            })
+            return {"error": "Subscription expired"}
+    # ===== КОНЕЦ ПРОВЕРКИ =====
+    
     url = f"https://general-runtime.voiceflow.com/state/user/{user_id}/interact"
 
     headers = {
