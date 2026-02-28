@@ -338,11 +338,15 @@ async def stripe_webhook(request: Request):
 
 # ================= FORTE CREATE ORDER =================
 
-@app.api_route("/create-forte-order", methods=["GET", "POST"])
-async def create_forte_order(uid: str = None, plan: str = None):
+@app.get("/create-forte-order")
+async def create_forte_order(uid: str, plan: str):
 
-    if not uid or not plan:
-        raise HTTPException(status_code=400, detail="Missing uid or plan")
+    forte_url = os.getenv("FORTE_API_URL")
+    username = os.getenv("FORTE_USERNAME")
+    password = os.getenv("FORTE_PASSWORD")
+
+    if not forte_url or not username or not password:
+        raise HTTPException(status_code=500, detail="Forte credentials not configured")
 
     plan = plan.strip().lower()
 
