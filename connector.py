@@ -338,8 +338,8 @@ async def stripe_webhook(request: Request):
 
 # ================= FORTE CREATE ORDER =================
 
-@app.get("/create-forte-order")
-async def create_forte_order(uid: str, plan: str):
+@app.api_route("/create-forte-order", methods=["GET", "POST"])
+async def create_forte_order(uid: str = None, plan: str = None):
 
     if not uid or not plan:
         raise HTTPException(status_code=400, detail="Missing uid or plan")
