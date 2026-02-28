@@ -371,7 +371,7 @@ async def create_forte_order(uid: str, plan: str):
     }
 
     response = requests.post(
-        f"{FORTE_API_URL}/order",
+        f"{forte_url}/order",
         json=payload,
         auth=(FORTE_USERNAME, FORTE_PASSWORD),
         headers={"Content-Type": "application/json"}
