@@ -172,24 +172,17 @@ async def stripe_webhook(request: Request):
 @app.get("/create-forte-order")
 async def create_forte_order(uid: str, plan: str):
 
-    forte_url = os.getenv("FORTE_API_URL")
-    username = os.getenv("FORTE_USERNAME")
-    password = os.getenv("FORTE_PASSWORD")
-
-    if not forte_url or not username or not password:
+    if not FORTE_API_URL or not FORTE_USERNAME or not FORTE_PASSWORD:
         raise HTTPException(status_code=500, detail="Forte credentials not configured")
 
     plan = plan.strip().lower()
 
     if plan == "hour":
         amount = "9990.00"
-
     elif plan == "day":
         amount = "29990.00"
-
     elif plan == "month":
         amount = "89990.00"
-
     else:
         raise HTTPException(status_code=400, detail="Invalid plan")
 
@@ -200,13 +193,13 @@ async def create_forte_order(uid: str, plan: str):
             "amount": amount,
             "currency": "KZT",
             "hppRedirectUrl": "https://nj-web.flutterflow.app/paywall",
-            "description": f{uid}|{plan}",
+            "description": f"{uid}|{plan}",
             "title": "Subscription"
         }
     }
 
     response = requests.post(
-        f"{forte_url}/order",
+        f"{FORTE_API_URL}/order",
         json=payload,
         auth=(FORTE_USERNAME, FORTE_PASSWORD),
         headers={"Content-Type": "application/json"}
@@ -217,25 +210,25 @@ async def create_forte_order(uid: str, plan: str):
     forte_response = response.json()
 
     order_id = forte_response["order"]["id"]
-    password = forte_response["order"]["password"]
+    order_password = forte_response["order"]["password"]
     hpp_url = forte_response["order"]["hppUrl"]
 
-    pay_url = f"{hpp_url}?id={order_id}&password={password}"
-
-    print("HPP URL:", hpp_url)
-    print("PAY URL:", pay_url)
+    pay_url = f"{hpp_url}?id={order_id}&password={order_password}"
 
     return RedirectResponse(pay_url)
+
+
+# ================= FORTE WEBHOOK =================
 
 @app.post("/forte-webhook")
 async def forte_webhook(request: Request):
 
     data = await request.json()
-
     print("FORTE WEBHOOK:", data)
 
-    status = data.get("order", {}).get("status")
-    description = data.get("order", {}).get("description")
+    order = data.get("order", {})
+    status = order.get("status")
+    description = order.get("description")
 
     if not description:
         return {"status": "no description"}
@@ -249,13 +242,10 @@ async def forte_webhook(request: Request):
 
     if plan == "hour":
         expires_at = datetime.utcnow() + timedelta(hours=1)
-
     elif plan == "day":
         expires_at = datetime.utcnow() + timedelta(days=1)
-
     elif plan == "month":
         expires_at = datetime.utcnow() + timedelta(days=30)
-
     else:
         return {"status": "invalid plan"}
 
