@@ -390,4 +390,7 @@ async def create_forte_order(request: Request):
 
     pay_url = f"{hpp_url}?id={order_id}&password={password}"
 
+    print("HPP URL:", hpp_url)
+    print("PAY URL:", pay_url)
+
     return RedirectResponse(pay_url)
