@@ -191,9 +191,11 @@ async def create_forte_order(uid: str, plan: str):
             "language": "en",
             "amount": amount,
             "currency": "KZT",
-            "hppRedirectUrl": "https://nj-web.flutterflow.app/paywall",
             "description": f"{uid}|{plan}",
-            "title": "Subscription"
+            "title": "NGS Subscription",
+
+            # 🔥 ВАЖНО — сюда твоя страница Tilda
+            "hppRedirectUrl": "https://твой-домен.kz/payment-success"
         }
     }
 
@@ -248,9 +250,11 @@ async def forte_webhook(request: Request):
     else:
         return {"status": "invalid plan"}
 
-    user_ref.update({
-        "hasAccess": True,
-        "expiresAt": expires_at,
-    })
+    user_ref.set({
+    "hasAccess": True,
+    "expiresAt": expires_at,
+    "planType": plan,
+    "isPaid": True
+}, merge=True)
 
     return {"status": "success"}
