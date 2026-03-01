@@ -192,10 +192,8 @@ async def create_forte_order(uid: str, plan: str):
             "amount": amount,
             "currency": "KZT",
             "description": f"{uid}|{plan}",
-            "title": "NGS Subscription",
-
-            # 🔥 ВАЖНО — сюда твоя страница Tilda
-            "hppRedirectUrl": "https://твой-домен.kz/payment-success"
+            "title": "Subscription",
+            "hppRedirectUrl": "https://gna-ei.kz/payment-check"
         }
     }
 
