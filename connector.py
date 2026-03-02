@@ -169,7 +169,7 @@ async def stripe_webhook(request: Request):
 # ================= FORTE CREATE ORDER =================
 
 @app.get("/create-forte-order")
-async def create_forte_order(uid: str, plan: str):
+async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
 
     if not FORTE_API_URL or not FORTE_USERNAME or not FORTE_PASSWORD:
         raise HTTPException(status_code=500, detail="Forte credentials not configured")
@@ -188,7 +188,7 @@ async def create_forte_order(uid: str, plan: str):
     payload = {
         "order": {
             "typeRid": "Order_RID",
-            "language": "en",
+            "language": lang,
             "amount": amount,
             "currency": "KZT",
             "description": f"{uid}|{plan}",
