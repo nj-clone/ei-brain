@@ -229,6 +229,17 @@ async def forte_webhook(request: Request):
     status = order.get("status")
     description = order.get("description")
 
+    order_id = order.get("orderId")
+
+    if not order_id:
+    return {"status": "no order id"}
+
+    order_ref = db.collection("orders").document(order_id)
+    existing_order = order_ref.get()
+
+    if existing_order.exists:
+    return {"status": "already processed"}
+
     if not description:
         return {"status": "no description"}
 
@@ -239,14 +250,29 @@ async def forte_webhook(request: Request):
 
     user_ref = db.collection("users").document(uid)
 
+    now = datetime.utcnow()
+
     if plan == "hour":
-        expires_at = datetime.utcnow() + timedelta(hours=1)
+        duration = timedelta(hours=1)
     elif plan == "day":
-        expires_at = datetime.utcnow() + timedelta(days=1)
+        duration = timedelta(days=1)
     elif plan == "month":
-        expires_at = datetime.utcnow() + timedelta(days=30)
+        duration = timedelta(days=30)
     else:
         return {"status": "invalid plan"}
+
+    user_doc = user_ref.get()
+
+    if user_doc.exists:
+        user_data = user_doc.to_dict()
+        current_expires = user_data.get("expiresAt")
+
+        if current_expires and current_expires > now:
+            expires_at = current_expires + duration
+        else:
+            expires_at = now + duration
+    else:
+        expires_at = now + duration
 
     user_ref.set({
     "hasAccess": True,
@@ -254,5 +280,11 @@ async def forte_webhook(request: Request):
     "planType": plan,
     "isPaid": True
 }, merge=True)
+
+    order_ref.set({
+    "uid": uid,
+    "plan": plan,
+    "processedAt": datetime.utcnow()
+})
 
     return {"status": "success"}
