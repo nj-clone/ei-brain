@@ -251,7 +251,7 @@ async def forte_webhook(request: Request):
     order_id = order.get("orderId")
 
     if not order_id:
-    return {"status": "no order id"}
+        return {"status": "no order id"}
 
     order_ref = db.collection("orders").document(order_id)
     existing_order = order_ref.get()
