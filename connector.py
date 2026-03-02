@@ -263,14 +263,20 @@ async def forte_webhook(request: Request):
 
     user_doc = user_ref.get()
 
+    total_payments = 1
+    current_expires = None
+
     if user_doc.exists:
         user_data = user_doc.to_dict()
         current_expires = user_data.get("expiresAt")
+        total_payments = user_data.get("totalPayments", 0) + 1
 
-        if current_expires and current_expires > now:
-            expires_at = current_expires + duration
-        else:
-            expires_at = now + duration
+    if current_expires:
+        if current_expires.tzinfo is not None:
+            current_expires = current_expires.replace(tzinfo=None)
+
+    if current_expires and current_expires > now:
+        expires_at = current_expires + duration
     else:
         expires_at = now + duration
 
@@ -279,12 +285,23 @@ async def forte_webhook(request: Request):
     "expiresAt": expires_at,
     "planType": plan,
     "isPaid": True
+    "lastPaymentAt": datetime.utcnow(),
+    "totalPayments": total_payments
 }, merge=True)
 
     order_ref.set({
     "uid": uid,
     "plan": plan,
     "processedAt": datetime.utcnow()
+})
+    # ===== сохраняем payment в аналитику =====
+    payment_ref = db.collection("payments").document(order_id)
+
+    payment_ref.set({
+        "uid": uid,
+        "plan": plan,
+        "status": status,
+        "createdAt": datetime.utcnow()
 })
 
     return {"status": "success"}
