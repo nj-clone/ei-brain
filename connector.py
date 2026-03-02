@@ -257,7 +257,7 @@ async def forte_webhook(request: Request):
     existing_order = order_ref.get()
 
     if existing_order.exists:
-    return {"status": "already processed"}
+        return {"status": "already processed"}
 
     if not description:
         return {"status": "no description"}
