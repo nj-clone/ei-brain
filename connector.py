@@ -59,6 +59,25 @@ class UserMessage(BaseModel):
 def ask_voiceflow(data: UserMessage):
     user_id = data.user_id or str(uuid.uuid4())
 
+    # серверная проверка подписки
+    user_ref = db.collection("users").document(user_id)
+    user_doc = user_ref.get()
+
+    if not user_doc.exists:
+        raise HTTPException(status_code=403, detail="User not found")
+
+    user_data = user_doc.to_dict()
+    expires_at = user_data.get("expiresAt")
+
+    if not expires_at:
+        raise HTTPException(status_code=403, detail="No active subscription")
+
+    if hasattr(expires_at, "tzinfo") and expires_at.tzinfo is not None:
+        expires_at = expires_at.replace(tzinfo=None)
+
+    if expires_at < datetime.utcnow():
+        raise HTTPException(status_code=403, detail="Subscription expired")
+
     url = f"https://general-runtime.voiceflow.com/state/user/{user_id}/interact"
 
     headers = {
@@ -272,7 +291,7 @@ async def forte_webhook(request: Request):
         total_payments = user_data.get("totalPayments", 0) + 1
 
     if current_expires:
-        if current_expires.tzinfo is not None:
+        if hasattr(current_expires, "tzinfo") and current_expires.tzinfo is not None:
             current_expires = current_expires.replace(tzinfo=None)
 
     if current_expires and current_expires > now:
