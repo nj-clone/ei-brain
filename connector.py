@@ -323,40 +323,40 @@ async def forte_webhook(request: Request):
         "createdAt": datetime.utcnow()
 })
 
-    @app.get("/subscription-status")
-    def subscription_status(uid: str):
-        user_ref = db.collection("users").document(uid)
-        user_doc = user_ref.get()
+@app.get("/subscription-status")
+def subscription_status(uid: str):
+    user_ref = db.collection("users").document(uid)
+    user_doc = user_ref.get()
 
-        if not user_doc.exists:
-            raise HTTPException(status_code=404, detail="User not found")
+    if not user_doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
 
-        user_data = user_doc.to_dict()
-        expires_at = user_data.get("expiresAt")
+    user_data = user_doc.to_dict()
+    expires_at = user_data.get("expiresAt")
 
-        if not expires_at:
-            return {
-                "hasAccess": False,
-                "remainingSeconds": 0
-        }
-
-        if expires_at.tzinfo is not None:
-            expires_at = expires_at.replace(tzinfo=None)
-
-        now = datetime.utcnow()
-
-        remaining_seconds = int((expires_at - now).total_seconds())
-
-        if remaining_seconds <= 0:
-            return {
-                "hasAccess": False,
-                "remainingSeconds": 0
-        }
-
+    if not expires_at:
         return {
-            "hasAccess": True,
-            "expiresAt": expires_at,
-            "remainingSeconds": remaining_seconds
+            "hasAccess": False,
+            "remainingSeconds": 0
+    }
+
+    if expires_at.tzinfo is not None:
+        expires_at = expires_at.replace(tzinfo=None)
+
+    now = datetime.utcnow()
+
+    remaining_seconds = int((expires_at - now).total_seconds())
+
+    if remaining_seconds <= 0:
+        return {
+            "hasAccess": False,
+            "remainingSeconds": 0
+    }
+
+    return {
+        "hasAccess": True,
+        "expiresAt": expires_at,
+        "remainingSeconds": remaining_seconds
     }
         
     return {"status": "success"}
