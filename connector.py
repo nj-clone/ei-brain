@@ -303,7 +303,7 @@ async def forte_webhook(request: Request):
     "hasAccess": True,
     "expiresAt": expires_at,
     "planType": plan,
-    "isPaid": True
+    "isPaid": True,
     "lastPaymentAt": datetime.utcnow(),
     "totalPayments": total_payments
 }, merge=True)
