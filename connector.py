@@ -322,6 +322,8 @@ async def forte_webhook(request: Request):
         "status": status,
         "createdAt": datetime.utcnow()
 })
+    
+     return {"status": "success"}
 
 @app.get("/subscription-status")
 def subscription_status(uid: str):
