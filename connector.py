@@ -199,11 +199,10 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
     plan = plan.strip().lower()
     lang = lang.strip().lower()
 
-    # --- Язык страницы оплаты ---
     if lang not in ["ru", "en"]:
         lang = "ru"
 
-    # --- Тарифы ---
+    # ---- Тарифы ----
     if plan == "hour":
         amount = "1000.00"
     elif plan == "day":
@@ -216,7 +215,7 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
     payload = {
         "order": {
             "typeRid": "Order_RID",
-            "language": lang,  # Forte покажет страницу на нужном языке
+            "language": lang,
             "amount": amount,
             "currency": "KZT",
             "description": f"{uid}|{plan}|{lang}",
@@ -236,18 +235,18 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
 
     forte_response = response.json()
 
-    order_id = forte_response["order"]["id"]
+    order_id = str(forte_response["order"]["id"])
     order_password = forte_response["order"]["password"]
     hpp_url = forte_response["order"]["hppUrl"]
 
-    # --- Сохраняем заказ ДО оплаты ---
-db.collection("forte_orders").document(order_id).set({
-    "uid": uid,
-    "plan": plan,
-    "lang": lang,
-    "createdAt": datetime.utcnow(),
-    "isProcessed": False
-})
+    # ---- Сохраняем заказ ДО оплаты ----
+    db.collection("forte_orders").document(order_id).set({
+        "uid": uid,
+        "plan": plan,
+        "lang": lang,
+        "createdAt": datetime.utcnow(),
+        "isProcessed": False
+    })
 
     pay_url = f"{hpp_url}?id={order_id}&password={order_password}"
 
@@ -261,14 +260,14 @@ db.collection("forte_orders").document(order_id).set({
 async def forte_success(request: Request):
 
     try:
-        id = request.query_params.get("ID") or request.query_params.get("id")
-        status = request.query_params.get("STATUS") or request.query_params.get("status")
-        
-        if not id:
+        order_id = request.query_params.get("ID") or request.query_params.get("id")
+
+        if not order_id:
             return {"error": "No order id received from Forte"}
-            
+
+        # ---- Проверяем заказ в Forte ----
         response = requests.get(
-            f"{FORTE_API_URL}/order/{id}",
+            f"{FORTE_API_URL}/order/{order_id}",
             auth=(FORTE_USERNAME, FORTE_PASSWORD)
         )
 
@@ -278,23 +277,25 @@ async def forte_success(request: Request):
         if order_status not in ["FullyPaid", "Approved", "Deposited"]:
             return RedirectResponse("https://gna-ei.kz/payment-failed")
 
-        # --- Получаем заказ из Firestore ---
-        order_doc = db.collection("forte_orders").document(id).get()
+        # ---- Получаем заказ из Firestore ----
+        order_doc = db.collection("forte_orders").document(order_id).get()
 
         if not order_doc.exists:
             return RedirectResponse("https://gna-ei.kz/payment-failed")
 
         order_info = order_doc.to_dict()
 
-        # Защита от повторной обработки
+        # ---- Защита от повторной обработки ----
         if order_info.get("isProcessed"):
+            if order_info.get("lang") == "en":
+                return RedirectResponse("https://gna-ei.kz/nj-assistant-en")
             return RedirectResponse("https://gna-ei.kz/nj-assistant")
 
-                uid = order_info["uid"]
-                plan = order_info["plan"]
-                lang = order_info["lang"]
+        uid = order_info["uid"]
+        plan = order_info["plan"]
+        lang = order_info["lang"]
 
-                now = datetime.utcnow()
+        now = datetime.utcnow()
 
         # ---- Определяем срок подписки ----
         if plan == "hour":
@@ -304,13 +305,12 @@ async def forte_success(request: Request):
         elif plan == "month":
             duration = timedelta(days=30)
         else:
-            return {"error": "invalid plan"}
+            return {"error": "Invalid plan"}
 
         expires_at = now + duration
 
         # ---- Обновляем пользователя ----
-        user_ref = db.collection("users").document(uid)
-        user_ref.set({
+        db.collection("users").document(uid).set({
             "hasAccess": True,
             "isPaid": True,
             "planType": plan,
@@ -318,25 +318,26 @@ async def forte_success(request: Request):
             "lastPaymentAt": now
         }, merge=True)
 
-        # --- Помечаем заказ как обработанный ---
-        db.collection("forte_orders").document(id).update({
+        # ---- Помечаем заказ как обработанный ----
+        db.collection("forte_orders").document(order_id).update({
             "isProcessed": True,
-                "paidAt": datetime.utcnow()
+            "paidAt": now
         })
 
         # ---- Записываем платеж ----
-        db.collection("payments").document(id).set({
+        db.collection("payments").document(order_id).set({
             "uid": uid,
             "plan": plan,
             "status": order_status,
-            "orderId": id,
+            "orderId": order_id,
             "createdAt": now
         })
 
+        # ---- Редирект по языку ----
         if lang == "en":
             return RedirectResponse("https://gna-ei.kz/nj-assistant-en")
-        else:
-            return RedirectResponse("https://gna-ei.kz/nj-assistant")
+
+        return RedirectResponse("https://gna-ei.kz/nj-assistant")
 
     except Exception as e:
         return {"error": str(e)}
