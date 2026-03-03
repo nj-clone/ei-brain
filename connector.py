@@ -219,7 +219,7 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
             "language": lang,  # Forte покажет страницу на нужном языке
             "amount": amount,
             "currency": "KZT",
-            "description": f"{uid}|{plan}",
+            "description": f"{uid}|{plan}|{lang}",
             "title": "Subscription",
             "hppRedirectUrl": "https://ei-brain.onrender.com/forte-success"
         }
@@ -249,14 +249,14 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
 # ================= FORTE VERIFY AFTER PAYMENT =================
 
 @app.get("/forte-success")
-async def forte_success(ID: str = None, STATUS: str = None):
+async def forte_success(id: str = None, status: str = None):
 
     try:
-        if not ID:
-            return {"error": "No order ID received from Forte"}
+        if not id:
+            return {"error": "No order id received from Forte"}
             
         response = requests.get(
-            f"{FORTE_API_URL}/order/{ID}",
+            f"{FORTE_API_URL}/order/{id}",
             auth=(FORTE_USERNAME, FORTE_PASSWORD)
         )
 
@@ -273,7 +273,7 @@ async def forte_success(ID: str = None, STATUS: str = None):
         if not description:
             return {"error": "no description in order"}
 
-        uid, plan = description.split("|")
+        uid, plan, lang = description.split("|")
 
         now = datetime.utcnow()
 
@@ -308,7 +308,10 @@ async def forte_success(ID: str = None, STATUS: str = None):
             "createdAt": now
         })
 
-        return RedirectResponse("https://gna-ei.kz/payment-success")
+        if lang == "en":
+            return RedirectResponse("https://gna-ei.kz/nj-assistant")
+        else:
+            return RedirectResponse("https://gna-ei.kz/nj-assistant")
 
     except Exception as e:
         return {"error": str(e)}
