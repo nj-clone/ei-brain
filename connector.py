@@ -418,3 +418,55 @@ async def create_forte_order(request: Request):
 
     except Exception as e:
         return {"error": str(e)}
+
+from fastapi import Request
+
+@app.post("/create-forte-order")
+async def create_forte_order(request: Request):
+    try:
+        body = await request.json()
+        amount = body.get("amount")
+
+        forte_login = os.getenv("FORTE_USERNAME")
+        forte_password = os.getenv("FORTE_PASSWORD")
+
+        auth_string = f"{forte_login}:{forte_password}"
+        encoded_auth = base64.b64encode(auth_string.encode()).decode()
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Basic {encoded_auth}",
+            "TXPG-Idempotence-Key": str(uuid.uuid4())
+        }
+
+        payload = {
+            "order": {
+                "typeRid": "Order_RID",
+                "language": "ru",
+                "amount": amount,
+                "currency": "KZT",
+                "hppRedirectUrl": "https://gna-ei.kz/forte-success",
+                "description": "NJ Assistant Subscription"
+            }
+        }
+
+        response = requests.post(
+            "https://api.fortebank.com/order",
+            json=payload,
+            headers=headers
+        )
+
+        result = response.json()
+
+        if "order" not in result:
+            return result
+
+        payment_url = f"{result['order']['hppUrl']}/flex/?id={result['order']['id']}&password={result['order']['password']}"
+
+        return {
+            "orderId": result["order"]["id"],
+            "paymentUrl": payment_url
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
