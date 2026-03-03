@@ -221,7 +221,7 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
             "currency": "KZT",
             "description": f"{uid}|{plan}",
             "title": "Subscription",
-            "hppRedirectUrl": "https://gna-ei.kz/forte-success"
+            "hppRedirectUrl": "https://ei-brain.onrender.com/forte-success"
         }
     }
 
@@ -249,11 +249,14 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
 # ================= FORTE VERIFY AFTER PAYMENT =================
 
 @app.get("/forte-success")
-async def forte_success(id: str, password: str):
+async def forte_success(ID: str = None, STATUS: str = None):
 
     try:
+        if not ID:
+            return {"error": "No order ID received from Forte"}
+            
         response = requests.get(
-            f"{FORTE_API_URL}/order/{id}",
+            f"{FORTE_API_URL}/order/{ID}",
             auth=(FORTE_USERNAME, FORTE_PASSWORD)
         )
 
