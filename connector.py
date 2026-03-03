@@ -295,7 +295,25 @@ async def forte_success(request: Request):
         plan = order_info["plan"]
         lang = order_info["lang"]
 
-        now = datetime.utcnow()
+        datetime.now(kz_timezone).replace(microsecond=0)
+
+        if plan == "hour":
+            duration = timedelta(hours=1)
+        elif plan == "day":
+            duration = timedelta(days=1)
+        elif plan == "month":
+            duration = timedelta(days=30)
+
+        expires_at = (now + duration).replace(microsecond=0)
+
+        db.collection("users").document(uid).set({
+            "hasAccess": True,
+            "isPaid": True,
+            "planType": plan,
+            "expiresAt": expires_at,
+            "expiresAtFormatted": expires_at.strftime("%d.%m.%Y %H:%M:%S"),
+            "lastPaymentAt": now
+        }, merge=True)
 
         # ---- Определяем срок подписки ----
         if plan == "hour":
