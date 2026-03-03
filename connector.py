@@ -441,9 +441,15 @@ async def forte_success(id: str, password: str):
 
         result = response.json()
 
-        return {
-            "status_from_bank": result
-        }
+        order_status = result.get("order", {}).get("status")
+
+        if order_status == "Approved":
+
+            # тут можно выдать доступ в Firestore
+            return RedirectResponse("https://gna-ei.kz/payment-success")
+
+        else:
+            return RedirectResponse("https://gna-ei.kz/payment-failed")
 
     except Exception as e:
         return {"error": str(e)}
