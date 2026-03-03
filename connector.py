@@ -309,7 +309,7 @@ async def forte_success(id: str = None, status: str = None):
         })
 
         if lang == "en":
-            return RedirectResponse("https://gna-ei.kz/nj-assistant")
+            return RedirectResponse("https://gna-ei.kz/nj-assistant-en")
         else:
             return RedirectResponse("https://gna-ei.kz/nj-assistant")
 
