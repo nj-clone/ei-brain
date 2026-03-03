@@ -295,7 +295,7 @@ async def forte_success(request: Request):
         plan = order_info["plan"]
         lang = order_info["lang"]
 
-        datetime.now(kz_timezone).replace(microsecond=0)
+        now = datetime.utcnow()
 
         if plan == "hour":
             duration = timedelta(hours=1)
@@ -357,5 +357,40 @@ async def forte_success(request: Request):
 
         return RedirectResponse("https://gna-ei.kz/online-session")
 
+    # ================= SUBSCRIPTION STATUS =================
+
+@app.get("/subscription-status")
+def subscription_status(uid: str):
+
+    try:
+        user_ref = db.collection("users").document(uid)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            return {"hasAccess": False, "remainingSeconds": 0}
+
+        user_data = user_doc.to_dict()
+        expires_at = user_data.get("expiresAt")
+
+        if not expires_at:
+            return {"hasAccess": False, "remainingSeconds": 0}
+
+        # Убираем timezone если есть
+        if hasattr(expires_at, "tzinfo") and expires_at.tzinfo is not None:
+            expires_at = expires_at.replace(tzinfo=None)
+
+        now = datetime.utcnow()
+
+        remaining_seconds = int((expires_at - now).total_seconds())
+
+        if remaining_seconds <= 0:
+            return {"hasAccess": False, "remainingSeconds": 0}
+
+        return {
+            "hasAccess": True,
+            "remainingSeconds": remaining_seconds,
+            "expiresAt": expires_at
+        }
+
     except Exception as e:
-        return {"error": str(e)}
+        return {"hasAccess": False, "remainingSeconds": 0}
