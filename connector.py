@@ -357,6 +357,9 @@ async def forte_success(request: Request):
 
         return RedirectResponse("https://gna-ei.kz/online-session")
 
+    except Exception as e:
+        return {"error": str(e)}
+
     # ================= SUBSCRIPTION STATUS =================
 
 @app.get("/subscription-status")
