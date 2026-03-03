@@ -395,31 +395,3 @@ def subscription_status(uid: str):
 
     except Exception:
         return {"hasAccess": False, "remainingSeconds": 0}
-
-@app.post("/activate-vip")
-async def activate_vip(request: Request):
-    data = await request.json()
-    uid = data.get("uid")
-    code = data.get("code")
-
-    valid_codes = {
-        "DIP": 24,   # 24 часа
-        "MAX": 24,
-        "RUS": 24,
-        "NF1": 24,
-        "NV1": 24
-    }
-
-    if code not in valid_codes:
-        return {"success": False, "error": "Invalid code"}
-
-    from datetime import datetime, timedelta
-
-    hours = valid_codes[code]
-    expires_at = datetime.utcnow() + timedelta(hours=hours)
-
-    db.collection("users").document(uid).set({
-        "expiresAt": expires_at
-    }, merge=True)
-
-    return {"success": True}
