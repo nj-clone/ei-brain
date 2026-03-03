@@ -240,6 +240,15 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
     order_password = forte_response["order"]["password"]
     hpp_url = forte_response["order"]["hppUrl"]
 
+    # --- Сохраняем заказ ДО оплаты ---
+db.collection("forte_orders").document(order_id).set({
+    "uid": uid,
+    "plan": plan,
+    "lang": lang,
+    "createdAt": datetime.utcnow(),
+    "isProcessed": False
+})
+
     pay_url = f"{hpp_url}?id={order_id}&password={order_password}"
 
     return RedirectResponse(pay_url)
@@ -269,16 +278,23 @@ async def forte_success(request: Request):
         if order_status not in ["FullyPaid", "Approved", "Deposited"]:
             return RedirectResponse("https://gna-ei.kz/payment-failed")
 
-        # ---- Получаем описание заказа ----
-        order_data = result.get("order", {})
-        description = order_data.get("description")
+        # --- Получаем заказ из Firestore ---
+        order_doc = db.collection("forte_orders").document(id).get()
 
-        if not description:
-            return {"error": "no description in order"}
+        if not order_doc.exists:
+            return RedirectResponse("https://gna-ei.kz/payment-failed")
 
-        uid, plan, lang = description.split("|")
+        order_info = order_doc.to_dict()
 
-        now = datetime.utcnow()
+        # Защита от повторной обработки
+        if order_info.get("isProcessed"):
+            return RedirectResponse("https://gna-ei.kz/nj-assistant")
+
+                uid = order_info["uid"]
+                plan = order_info["plan"]
+                lang = order_info["lang"]
+
+                now = datetime.utcnow()
 
         # ---- Определяем срок подписки ----
         if plan == "hour":
@@ -301,6 +317,12 @@ async def forte_success(request: Request):
             "expiresAt": expires_at,
             "lastPaymentAt": now
         }, merge=True)
+
+        # --- Помечаем заказ как обработанный ---
+        db.collection("forte_orders").document(id).update({
+            "isProcessed": True,
+                "paidAt": datetime.utcnow()
+        })
 
         # ---- Записываем платеж ----
         db.collection("payments").document(id).set({
