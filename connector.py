@@ -335,9 +335,9 @@ async def forte_success(request: Request):
 
         # ---- Редирект по языку ----
         if lang == "en":
-            return RedirectResponse("https://gna-ei.kz/nj-assistant-en")
+            return RedirectResponse("https://gna-ei.kz/online-session-en")
 
-        return RedirectResponse("https://gna-ei.kz/nj-assistant")
+        return RedirectResponse("https://gna-ei.kz/online-session")
 
     except Exception as e:
         return {"error": str(e)}
