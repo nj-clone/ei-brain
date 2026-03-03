@@ -188,7 +188,6 @@ async def stripe_webhook(request: Request):
 
     return {"status": "ignored"}
 
-
 # ================= FORTE CREATE ORDER =================
 
 @app.get("/create-forte-order")
@@ -198,7 +197,13 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
         raise HTTPException(status_code=500, detail="Forte credentials not configured")
 
     plan = plan.strip().lower()
+    lang = lang.strip().lower()
 
+    # --- Язык страницы оплаты ---
+    if lang not in ["ru", "en"]:
+        lang = "ru"
+
+    # --- Тарифы ---
     if plan == "hour":
         amount = "9990.00"
     elif plan == "day":
@@ -211,12 +216,12 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
     payload = {
         "order": {
             "typeRid": "Order_RID",
-            "language": lang,
+            "language": lang,  # Forte покажет страницу на нужном языке
             "amount": amount,
             "currency": "KZT",
             "description": f"{uid}|{plan}",
             "title": "Subscription",
-            "hppRedirectUrl": "https://gna-ei.kz/payment-check"
+            "hppRedirectUrl": "https://gna-ei.kz/forte-success"
         }
     }
 
@@ -240,216 +245,67 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
     return RedirectResponse(pay_url)
 
 
-# ================= FORTE WEBHOOK =================
 
-@app.post("/forte-webhook")
-async def forte_webhook(request: Request):
-
-    data = await request.json()
-    print("FORTE WEBHOOK:", data)
-
-    order = data.get("order", {})
-    status = order.get("status")
-    description = order.get("description")
-
-    order_id = order.get("orderId")
-
-    if not order_id:
-        return {"status": "no order id"}
-
-    order_ref = db.collection("orders").document(order_id)
-    existing_order = order_ref.get()
-
-    if existing_order.exists:
-        return {"status": "already processed"}
-
-    if not description:
-        return {"status": "no description"}
-
-    uid, plan = description.split("|")
-
-    if status != "APPROVED":
-        return {"status": "not approved"}
-
-    user_ref = db.collection("users").document(uid)
-
-    now = datetime.utcnow()
-
-    if plan == "hour":
-        duration = timedelta(hours=1)
-    elif plan == "day":
-        duration = timedelta(days=1)
-    elif plan == "month":
-        duration = timedelta(days=30)
-    else:
-        return {"status": "invalid plan"}
-
-    user_doc = user_ref.get()
-
-    total_payments = 1
-    current_expires = None
-
-    if user_doc.exists:
-        user_data = user_doc.to_dict()
-        current_expires = user_data.get("expiresAt")
-        total_payments = user_data.get("totalPayments", 0) + 1
-
-    if current_expires:
-        if hasattr(current_expires, "tzinfo") and current_expires.tzinfo is not None:
-            current_expires = current_expires.replace(tzinfo=None)
-
-    if current_expires and current_expires > now:
-        expires_at = current_expires + duration
-    else:
-        expires_at = now + duration
-
-    user_ref.set({
-    "hasAccess": True,
-    "expiresAt": expires_at,
-    "planType": plan,
-    "isPaid": True,
-    "lastPaymentAt": datetime.utcnow(),
-    "totalPayments": total_payments
-}, merge=True)
-
-    order_ref.set({
-    "uid": uid,
-    "plan": plan,
-    "processedAt": datetime.utcnow()
-})
-    # ===== сохраняем payment в аналитику =====
-    payment_ref = db.collection("payments").document(order_id)
-
-    payment_ref.set({
-        "uid": uid,
-        "plan": plan,
-        "status": status,
-        "createdAt": datetime.utcnow()
-})
-    
-    return {"status": "success"}
-
-@app.get("/subscription-status")
-def subscription_status(uid: str):
-    user_ref = db.collection("users").document(uid)
-    user_doc = user_ref.get()
-
-    if not user_doc.exists:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    user_data = user_doc.to_dict()
-    expires_at = user_data.get("expiresAt")
-
-    if not expires_at:
-        return {
-            "hasAccess": False,
-            "remainingSeconds": 0
-    }
-
-    if expires_at.tzinfo is not None:
-        expires_at = expires_at.replace(tzinfo=None)
-
-    now = datetime.utcnow()
-
-    remaining_seconds = int((expires_at - now).total_seconds())
-
-    if remaining_seconds <= 0:
-        return {
-            "hasAccess": False,
-            "remainingSeconds": 0
-    }
-
-    return {
-        "hasAccess": True,
-        "expiresAt": expires_at,
-        "remainingSeconds": remaining_seconds
-    }
-        
-    return {"status": "success"}
-
-from fastapi import Request
-
-@app.post("/create-forte-order")
-async def create_forte_order(request: Request):
-    try:
-        body = await request.json()
-        amount = body.get("amount")
-
-        forte_login = os.getenv("FORTE_USERNAME")
-        forte_password = os.getenv("FORTE_PASSWORD")
-
-        auth_string = f"{forte_login}:{forte_password}"
-        encoded_auth = base64.b64encode(auth_string.encode()).decode()
-
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Basic {encoded_auth}",
-            "TXPG-Idempotence-Key": str(uuid.uuid4())
-        }
-
-        payload = {
-            "order": {
-                "typeRid": "Order_RID",
-                "language": lang,
-                "amount": amount,
-                "currency": "KZT",
-                "hppRedirectUrl": "https://gna-ei.kz/forte-success",
-                "description": "NJ Assistant Subscription"
-            }
-        }
-
-        response = requests.post(
-            f"{os.getenv('FORTE_API_URL')}/order",
-            json=payload,
-            headers=headers
-        )
-
-        result = response.json()
-
-        if "order" not in result:
-            return result
-
-        payment_url = f"{result['order']['hppUrl']}/flex/?id={result['order']['id']}&password={result['order']['password']}"
-
-        return {
-            "orderId": result["order"]["id"],
-            "paymentUrl": payment_url
-        }
-
-    except Exception as e:
-        return {"error": str(e)}
+# ================= FORTE VERIFY AFTER PAYMENT =================
 
 @app.get("/forte-success")
 async def forte_success(id: str, password: str):
 
     try:
-        forte_login = os.getenv("FORTE_USERNAME")
-        forte_password = os.getenv("FORTE_PASSWORD")
-
-        auth_string = f"{forte_login}:{forte_password}"
-        encoded_auth = base64.b64encode(auth_string.encode()).decode()
-
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Basic {encoded_auth}"
-        }
-
         response = requests.get(
-            f"{os.getenv('FORTE_API_URL')}/order/{id}",
-            headers=headers
+            f"{FORTE_API_URL}/order/{id}",
+            auth=(FORTE_USERNAME, FORTE_PASSWORD)
         )
 
         result = response.json()
-
         order_status = result.get("order", {}).get("status")
 
-        if order_status == "Approved":
-
-            # тут можно выдать доступ в Firestore
-            return RedirectResponse("https://gna-ei.kz/payment-success")
-
-        else:
+        if order_status != "Approved":
             return RedirectResponse("https://gna-ei.kz/payment-failed")
+
+        # ---- Получаем описание заказа ----
+        order_data = result.get("order", {})
+        description = order_data.get("description")
+
+        if not description:
+            return {"error": "no description in order"}
+
+        uid, plan = description.split("|")
+
+        now = datetime.utcnow()
+
+        # ---- Определяем срок подписки ----
+        if plan == "hour":
+            duration = timedelta(hours=1)
+        elif plan == "day":
+            duration = timedelta(days=1)
+        elif plan == "month":
+            duration = timedelta(days=30)
+        else:
+            return {"error": "invalid plan"}
+
+        expires_at = now + duration
+
+        # ---- Обновляем пользователя ----
+        user_ref = db.collection("users").document(uid)
+        user_ref.set({
+            "hasAccess": True,
+            "isPaid": True,
+            "planType": plan,
+            "expiresAt": expires_at,
+            "lastPaymentAt": now
+        }, merge=True)
+
+        # ---- Записываем платеж ----
+        db.collection("payments").document(id).set({
+            "uid": uid,
+            "plan": plan,
+            "status": order_status,
+            "orderId": id,
+            "createdAt": now
+        })
+
+        return RedirectResponse("https://gna-ei.kz/payment-success")
 
     except Exception as e:
         return {"error": str(e)}
