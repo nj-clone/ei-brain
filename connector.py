@@ -390,7 +390,7 @@ async def create_forte_order(request: Request):
         payload = {
             "order": {
                 "typeRid": "Order_RID",
-                "language": "ru",
+                "language": lang,
                 "amount": amount,
                 "currency": "KZT",
                 "hppRedirectUrl": "https://gna-ei.kz/forte-success",
@@ -442,7 +442,7 @@ async def create_forte_order(request: Request):
         payload = {
             "order": {
                 "typeRid": "Order_RID",
-                "language": "ru",
+                "language": lang,
                 "amount": amount,
                 "currency": "KZT",
                 "hppRedirectUrl": "https://gna-ei.kz/forte-success",
