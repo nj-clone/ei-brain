@@ -249,9 +249,12 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
 # ================= FORTE VERIFY AFTER PAYMENT =================
 
 @app.get("/forte-success")
-async def forte_success(id: str = None, status: str = None):
+async def forte_success(request: Request):
 
     try:
+        id = request.query_params.get("ID") or request.query_params.get("id")
+        status = request.query_params.get("STATUS") or request.query_params.get("status")
+        
         if not id:
             return {"error": "No order id received from Forte"}
             
