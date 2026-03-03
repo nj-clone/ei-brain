@@ -361,7 +361,6 @@ async def forte_success(request: Request):
 
 @app.get("/subscription-status")
 def subscription_status(uid: str):
-
     try:
         user_ref = db.collection("users").document(uid)
         user_doc = user_ref.get()
@@ -380,7 +379,6 @@ def subscription_status(uid: str):
             expires_at = expires_at.replace(tzinfo=None)
 
         now = datetime.utcnow()
-
         remaining_seconds = int((expires_at - now).total_seconds())
 
         if remaining_seconds <= 0:
@@ -392,5 +390,5 @@ def subscription_status(uid: str):
             "expiresAt": expires_at
         }
 
-    except Exception as e:
+    except Exception:
         return {"hasAccess": False, "remainingSeconds": 0}
