@@ -266,7 +266,7 @@ async def forte_success(request: Request):
         result = response.json()
         order_status = result.get("order", {}).get("status")
 
-        if order_status != "Approved":
+        if order_status not in ["FullyPaid", "Approved", "Deposited"]:
             return RedirectResponse("https://gna-ei.kz/payment-failed")
 
         # ---- Получаем описание заказа ----
