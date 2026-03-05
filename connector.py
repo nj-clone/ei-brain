@@ -142,8 +142,8 @@ async def create_checkout_session(request: Request):
             },
             "quantity": 1,
         }],
-        success_url="https://seyidkona.flutterflow.app/njCORE",
-        cancel_url="https://seyidkona.flutterflow.app/payment",
+        success_url="https://seid-chat.carrd.co",
+        cancel_url="https://seidkona.carrd.co/",
     )
 
     return RedirectResponse(session.url)
@@ -187,7 +187,36 @@ async def stripe_webhook(request: Request):
         return {"status": "success"}
 
     return {"status": "ignored"}
+    
+# ================= CHECK ACCESS =================
 
+@app.get("/check-access")
+async def check_access(uid: str):
+
+    user_ref = db.collection("users").document(uid)
+    user = user_ref.get()
+
+    if not user.exists:
+        return {"access": False}
+
+    data = user.to_dict()
+
+    if not data.get("hasAccess"):
+        return {"access": False}
+
+    expires_at = data.get("expiresAt")
+
+    if datetime.utcnow() > expires_at:
+
+        user_ref.update({
+            "hasAccess": False,
+            "minutesRemaining": 0
+        })
+
+        return {"access": False}
+
+    return {"access": True}
+    
 # ================= FORTE CREATE ORDER =================
 
 @app.get("/create-forte-order")
