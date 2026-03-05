@@ -185,7 +185,7 @@ async def stripe_webhook(request: Request):
             "hasAccess": True,
             "expiresAt": expires_at
         }, merge=True)
-        })
+        
 
         return {"status": "success"}
 
