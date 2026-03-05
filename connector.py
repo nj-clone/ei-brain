@@ -130,6 +130,8 @@ async def create_checkout_session(request: Request):
     uid = request.query_params.get("uid")
 
     session = stripe.checkout.Session.create(
+        client_reference_id=uid
+        
         payment_method_types=["card"],
         mode="payment",
         customer_email=email,
@@ -168,8 +170,8 @@ async def stripe_webhook(request: Request):
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        metadata = session.get("metadata", {})
-        uid = metadata.get("user_id")
+        
+        uid = session.get("client_reference_id")
 
         if not uid:
             return {"status": "no user id"}
@@ -178,10 +180,11 @@ async def stripe_webhook(request: Request):
 
         expires_at = datetime.utcnow() + timedelta(minutes=10)
 
-        user_ref.update({
+        user_ref.set({
             "minutesRemaining": 10,
             "hasAccess": True,
             "expiresAt": expires_at
+        }, merge=True)
         })
 
         return {"status": "success"}
