@@ -130,8 +130,7 @@ async def create_checkout_session(request: Request):
     uid = request.query_params.get("uid")
 
     session = stripe.checkout.Session.create(
-        client_reference_id=uid
-        
+        client_reference_id=uid,
         payment_method_types=["card"],
         mode="payment",
         customer_email=email,
