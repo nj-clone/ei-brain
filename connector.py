@@ -133,7 +133,10 @@ async def create_checkout_session(request: Request):
         payment_method_types=["card"],
         mode="payment",
         customer_email=email,
-        metadata={"user_id": uid, "agent": "seidkona"},
+        metadata={
+            "user_id": uid,
+            "agent": "seidkona"
+        },
         line_items=[{
             "price_data": {
                 "currency": "usd",
@@ -162,7 +165,10 @@ async def create_checkout_session_ruslan(request: Request):
         payment_method_types=["card"],
         mode="payment",
         customer_email=email,
-        metadata={"user_id": uid, "agent": "ruslan"},
+        metadata={
+            "user_id": uid,
+            "agent": "ruslan"
+        },
         line_items=[{
             "price_data": {
                 "currency": "usd",
@@ -208,10 +214,16 @@ async def stripe_webhook(request: Request):
 
         user_ref = db.collection("users").document(uid)
 
-        # определяем длительность доступа
-        if agent == "ruslan":
+        # Seidkona → 10 минут
+        if agent == "seidkona":
+            expires_at = datetime.utcnow() + timedelta(minutes=10)
+            minutes_remaining = 10
+
+        # Ruslan → 1 час
+        elif agent == "ruslan":
             expires_at = datetime.utcnow() + timedelta(hours=1)
             minutes_remaining = 60
+
         else:
             expires_at = datetime.utcnow() + timedelta(minutes=10)
             minutes_remaining = 10
@@ -258,7 +270,6 @@ async def check_access(uid: str):
         return {"access": False}
 
     return {"access": True}
-
 
 # ================= FORTE CREATE ORDER =================
 
