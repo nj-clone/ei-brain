@@ -177,8 +177,8 @@ async def create_checkout_session_ruslan(request: Request):
             },
             "quantity": 1,
         }],
-        success_url="https://chat-rus.carrd.co",
-        cancel_url="https://seidkona.carrd.co/",
+        success_url="https://chat-rus.carrd.co/",
+        cancel_url="https://ruslan-sp.carrd.co/",
     )
 
     return RedirectResponse(session.url)
