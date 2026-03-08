@@ -120,8 +120,7 @@ def ask_voiceflow(data: UserMessage):
     return {
         "text": "\n".join(texts)
     }
-
-# ================= STRIPE CHECKOUT =================
+# ================= STRIPE CHECKOUT (SEIDKONA) =================
 
 @app.get("/create-checkout-session")
 async def create_checkout_session(request: Request):
@@ -134,7 +133,7 @@ async def create_checkout_session(request: Request):
         payment_method_types=["card"],
         mode="payment",
         customer_email=email,
-        metadata={"user_id": uid},
+        metadata={"user_id": uid, "agent": "seidkona"},
         line_items=[{
             "price_data": {
                 "currency": "usd",
@@ -144,6 +143,35 @@ async def create_checkout_session(request: Request):
             "quantity": 1,
         }],
         success_url="https://seid-chat.carrd.co",
+        cancel_url="https://seidkona.carrd.co/",
+    )
+
+    return RedirectResponse(session.url)
+
+
+# ================= STRIPE CHECKOUT (RUSLAN) =================
+
+@app.get("/create-checkout-session-ruslan")
+async def create_checkout_session_ruslan(request: Request):
+
+    email = request.query_params.get("email")
+    uid = request.query_params.get("uid")
+
+    session = stripe.checkout.Session.create(
+        client_reference_id=uid,
+        payment_method_types=["card"],
+        mode="payment",
+        customer_email=email,
+        metadata={"user_id": uid, "agent": "ruslan"},
+        line_items=[{
+            "price_data": {
+                "currency": "usd",
+                "product_data": {"name": "Consultation with Ruslan"},
+                "unit_amount": 999,
+            },
+            "quantity": 1,
+        }],
+        success_url="https://chat-rus.carrd.co",
         cancel_url="https://seidkona.carrd.co/",
     )
 
@@ -168,28 +196,37 @@ async def stripe_webhook(request: Request):
         return JSONResponse({"error": str(e)}, status_code=400)
 
     if event["type"] == "checkout.session.completed":
+
         session = event["data"]["object"]
-        
         uid = session.get("client_reference_id")
 
         if not uid:
             return {"status": "no user id"}
 
+        metadata = session.get("metadata", {})
+        agent = metadata.get("agent")
+
         user_ref = db.collection("users").document(uid)
 
-        expires_at = datetime.utcnow() + timedelta(minutes=10)
+        # определяем длительность доступа
+        if agent == "ruslan":
+            expires_at = datetime.utcnow() + timedelta(hours=1)
+            minutes_remaining = 60
+        else:
+            expires_at = datetime.utcnow() + timedelta(minutes=10)
+            minutes_remaining = 10
 
         user_ref.set({
-            "minutesRemaining": 10,
+            "minutesRemaining": minutes_remaining,
             "hasAccess": True,
             "expiresAt": expires_at
         }, merge=True)
-        
 
         return {"status": "success"}
 
     return {"status": "ignored"}
-    
+
+
 # ================= CHECK ACCESS =================
 
 @app.get("/check-access")
@@ -208,6 +245,9 @@ async def check_access(uid: str):
 
     expires_at = data.get("expiresAt")
 
+    if not expires_at:
+        return {"access": False}
+
     if datetime.utcnow() > expires_at:
 
         user_ref.update({
@@ -218,7 +258,8 @@ async def check_access(uid: str):
         return {"access": False}
 
     return {"access": True}
-    
+
+
 # ================= FORTE CREATE ORDER =================
 
 @app.get("/create-forte-order")
