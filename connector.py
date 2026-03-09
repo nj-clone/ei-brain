@@ -59,11 +59,14 @@ class UserMessage(BaseModel):
     message: str
     user_id: str | None = None
 
+
 @app.post("/ask")
 def ask_voiceflow(data: UserMessage):
+
     user_id = data.user_id or str(uuid.uuid4())
 
-    # серверная проверка подписки
+    # ===== Проверяем пользователя =====
+
     user_ref = db.collection("users").document(user_id)
     user_doc = user_ref.get()
 
@@ -71,25 +74,46 @@ def ask_voiceflow(data: UserMessage):
         raise HTTPException(status_code=403, detail="User not found")
 
     user_data = user_doc.to_dict()
+
+    has_access = user_data.get("hasAccess")
     expires_at = user_data.get("expiresAt")
 
+    # ===== Если нет доступа =====
+
+    if not has_access:
+        return {
+            "expired": True,
+            "text": "⛔ Your session has ended. Please purchase a new consultation."
+        }
+
+    # ===== Если нет времени окончания =====
+
     if not expires_at:
-        raise HTTPException(status_code=403, detail="No active subscription")
+        return {
+            "expired": True,
+            "text": "⛔ No active subscription."
+        }
+
+    # ===== Убираем timezone если есть =====
 
     if hasattr(expires_at, "tzinfo") and expires_at.tzinfo is not None:
         expires_at = expires_at.replace(tzinfo=None)
+
+    # ===== Проверяем время =====
 
     if datetime.utcnow() > expires_at:
 
         user_ref.update({
             "hasAccess": False,
             "minutesRemaining": 0
-    })
+        })
 
         return {
             "expired": True,
-            "text": "⏳ Session expired. Please purchase a new consultation."
-    }
+            "text": "⏳ Your consultation time has expired. Please purchase a new session."
+        }
+
+    # ===== Если всё ок — обращаемся к Voiceflow =====
 
     url = f"https://general-runtime.voiceflow.com/state/user/{user_id}/interact"
 
@@ -99,15 +123,15 @@ def ask_voiceflow(data: UserMessage):
     }
 
     payload = {
-    "request": {
-        "type": "text",
-        "payload": data.message
-    },
-    "config": {
-        "tts": False,
-        "stripSSML": True
+        "request": {
+            "type": "text",
+            "payload": data.message
+        },
+        "config": {
+            "tts": False,
+            "stripSSML": True
+        }
     }
-}
 
     response = requests.post(
         url,
@@ -122,6 +146,7 @@ def ask_voiceflow(data: UserMessage):
     traces = response.json()
 
     texts = []
+
     for trace in traces:
         if trace.get("type") == "text":
             texts.append(trace["payload"]["message"])
