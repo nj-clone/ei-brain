@@ -81,14 +81,14 @@ def ask_voiceflow(data: UserMessage):
 
     if datetime.utcnow() > expires_at:
 
-    user_ref.update({
-        "hasAccess": False,
-        "minutesRemaining": 0
+        user_ref.update({
+            "hasAccess": False,
+            "minutesRemaining": 0
     })
 
-    return {
-        "expired": True,
-        "text": "⏳ Session expired. Please purchase a new consultation."
+        return {
+            "expired": True,
+            "text": "⏳ Session expired. Please purchase a new consultation."
     }
 
     url = f"https://general-runtime.voiceflow.com/state/user/{user_id}/interact"
