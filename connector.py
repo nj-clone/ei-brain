@@ -79,8 +79,16 @@ def ask_voiceflow(data: UserMessage):
     if hasattr(expires_at, "tzinfo") and expires_at.tzinfo is not None:
         expires_at = expires_at.replace(tzinfo=None)
 
-    if expires_at < datetime.utcnow():
-        raise HTTPException(status_code=403, detail="Subscription expired")
+    if datetime.utcnow() > expires_at:
+
+    user_ref.update({
+        "hasAccess": False,
+        "minutesRemaining": 0
+    })
+
+    return {
+        "text": "⏳ Subscription expired"
+    }
 
     url = f"https://general-runtime.voiceflow.com/state/user/{user_id}/interact"
 
