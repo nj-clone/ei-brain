@@ -87,7 +87,8 @@ def ask_voiceflow(data: UserMessage):
     })
 
     return {
-        "text": "⏳ Subscription expired"
+        "expired": True,
+        "text": "⏳ Session expired. Please purchase a new consultation."
     }
 
     url = f"https://general-runtime.voiceflow.com/state/user/{user_id}/interact"
