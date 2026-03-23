@@ -7,12 +7,8 @@ import os
 import uuid
 import json
 import requests
-import stripe
 import firebase_admin
-import requests
 import base64
-import os
-import uuid
 
 from firebase_admin import credentials, firestore
 from datetime import datetime, timedelta
@@ -35,14 +31,9 @@ app.add_middleware(
 VOICEFLOW_API_KEY = os.getenv("VOICEFLOW_API_KEY")
 VOICEFLOW_PROJECT_ID = os.getenv("VOICEFLOW_PROJECT_ID")
 
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
-
 FORTE_API_URL = os.getenv("FORTE_API_URL")
 FORTE_USERNAME = os.getenv("FORTE_USERNAME")
 FORTE_PASSWORD = os.getenv("FORTE_PASSWORD")
-
-stripe.api_key = STRIPE_SECRET_KEY
 
 # ================= FIREBASE INIT =================
 
@@ -154,123 +145,6 @@ def ask_voiceflow(data: UserMessage):
     return {
         "text": "\n".join(texts)
     }
-# ================= STRIPE CHECKOUT (SEIDKONA) =================
-
-@app.get("/create-checkout-session")
-async def create_checkout_session(request: Request):
-
-    email = request.query_params.get("email")
-    uid = request.query_params.get("uid")
-
-    session = stripe.checkout.Session.create(
-        client_reference_id=uid,
-        payment_method_types=["card"],
-        mode="payment",
-        customer_email=email,
-        metadata={
-            "user_id": uid,
-            "agent": "seidkona"
-        },
-        line_items=[{
-            "price_data": {
-                "currency": "usd",
-                "product_data": {"name": "Zodiac Wisdom"},
-                "unit_amount": 999,
-            },
-            "quantity": 1,
-        }],
-        success_url="https://seid-chat.carrd.co",
-        cancel_url="https://seidkona.carrd.co/",
-    )
-
-    return RedirectResponse(session.url)
-
-
-# ================= STRIPE CHECKOUT (RUSLAN) =================
-
-@app.get("/create-checkout-session-ruslan")
-async def create_checkout_session_ruslan(request: Request):
-
-    email = request.query_params.get("email")
-    uid = request.query_params.get("uid")
-
-    session = stripe.checkout.Session.create(
-        client_reference_id=uid,
-        payment_method_types=["card"],
-        mode="payment",
-        customer_email=email,
-        metadata={
-            "user_id": uid,
-            "agent": "ruslan"
-        },
-        line_items=[{
-            "price_data": {
-                "currency": "usd",
-                "product_data": {"name": "Consultation with Ruslan"},
-                "unit_amount": 999,
-            },
-            "quantity": 1,
-        }],
-        success_url="https://chat-rus.carrd.co/",
-        cancel_url="https://ruslan-sp.carrd.co/",
-    )
-
-    return RedirectResponse(session.url)
-
-
-# ================= STRIPE WEBHOOK =================
-
-@app.post("/stripe-webhook")
-async def stripe_webhook(request: Request):
-
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload,
-            sig_header,
-            STRIPE_WEBHOOK_SECRET
-        )
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
-
-    if event["type"] == "checkout.session.completed":
-
-        session = event["data"]["object"]
-        uid = session.get("client_reference_id")
-
-        if not uid:
-            return {"status": "no user id"}
-
-        metadata = session.get("metadata", {})
-        agent = metadata.get("agent")
-
-        user_ref = db.collection("users").document(uid)
-
-        # Seidkona → 10 минут
-        if agent == "seidkona":
-            expires_at = datetime.utcnow() + timedelta(minutes=10)
-            minutes_remaining = 10
-
-        # Ruslan → 1 час
-        elif agent == "ruslan":
-            expires_at = datetime.utcnow() + timedelta(hours=1)
-            minutes_remaining = 60
-
-        else:
-            expires_at = datetime.utcnow() + timedelta(minutes=10)
-            minutes_remaining = 10
-
-        user_ref.set({
-            "minutesRemaining": minutes_remaining,
-            "hasAccess": True,
-            "expiresAt": expires_at
-        }, merge=True)
-
-        return {"status": "success"}
-
-    return {"status": "ignored"}
 
 
 # ================= CHECK ACCESS =================
