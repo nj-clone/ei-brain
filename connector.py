@@ -386,3 +386,9 @@ def subscription_status(uid: str):
 
     except Exception:
         return {"hasAccess": False, "remainingSeconds": 0}
+
+
+from fastapi.staticfiles import StaticFiles
+
+# 🔥 подключаем статические файлы (manifest + иконки)
+app.mount("/static", StaticFiles(directory="static"), name="static")
