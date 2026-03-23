@@ -389,6 +389,16 @@ def subscription_status(uid: str):
 
 
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
-# 🔥 подключаем статические файлы (manifest + иконки)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+@app.get("/manifest.json")
+def manifest():
+    return FileResponse("manifest.json")
+
+@app.get("/icon-192.png")
+def icon_192():
+    return FileResponse("icon-192.png")
+
+@app.get("/icon-512.png")
+def icon_512():
+    return FileResponse("icon-512.png")
