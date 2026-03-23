@@ -388,7 +388,6 @@ def subscription_status(uid: str):
         return {"hasAccess": False, "remainingSeconds": 0}
 
 
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 @app.get("/manifest.json")
