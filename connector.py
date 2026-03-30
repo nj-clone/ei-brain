@@ -195,7 +195,7 @@ async def create_forte_order(uid: str, plan: str, lang: str = "ru"):
 
     # ---- Тарифы ----
     if plan == "hour":
-        amount = "9900.00"
+        amount = "100.00"
     elif plan == "day":
         amount = "29990.00"
     elif plan == "month":
